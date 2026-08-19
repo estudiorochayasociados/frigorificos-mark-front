@@ -2,7 +2,7 @@
   <q-layout view="lHh Lpr lFf" class="app-layout">
     <q-header class="mobile-header lt-md">
       <q-toolbar>
-        <div class="brand-mark brand-mark--small">M</div>
+        <img class="mobile-logo" src="/images/logo.png" alt="Mark" />
         <q-toolbar-title class="mobile-title">Zona 1</q-toolbar-title>
         <button class="role-pill" type="button">
           <UserRound :size="16" />
@@ -33,7 +33,7 @@
     <q-drawer show-if-above :model-value="true" :width="264" class="app-sidebar" breakpoint="1024">
       <div class="sidebar-content">
         <div class="brand-block">
-          <div class="brand-mark">M</div>
+          <img class="brand-logo" src="/images/logo.png" alt="Mark" />
           <div>
             <div class="brand-name">MARK</div>
             <div class="brand-caption">Gestion frigorifica</div>
