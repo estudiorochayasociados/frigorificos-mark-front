@@ -46,13 +46,6 @@
           <template #body-cell-date="props">
             <q-td :props="props">{{ truckDate(props.row) }}</q-td>
           </template>
-          <template #body-cell-status="props">
-            <q-td :props="props"
-              ><span :class="['status-pill', statusClass(props.row.status)]">{{
-                props.row.status
-              }}</span></q-td
-            >
-          </template>
         </q-table>
 
         <div class="truck-list lt-md">
@@ -68,7 +61,6 @@
                 <strong>{{ truck.client }}</strong
                 ><span>{{ truck.chasis }} / {{ truck.acoplado }}</span>
               </div>
-              <span :class="['status-pill', statusClass(truck.status)]">{{ truck.status }}</span>
             </div>
             <div class="truck-card-values">
               <div>
@@ -106,119 +98,109 @@
         </header>
 
         <div class="leader-dialog-body">
-          <div class="leader-dialog-grid">
-            <q-input
-              v-model.number="leaderForm.muertos"
-              type="number"
-              label="Muertos"
-              outlined
-              dense
-              class="field-control"
-            />
-            <q-input
-              v-model.number="leaderForm.decomisos"
-              type="number"
-              label="Decomisos"
-              outlined
-              dense
-              class="field-control"
-            />
-            <q-input
-              v-model.number="leaderForm.decomisosVisc"
-              type="number"
-              label="Vísceras"
-              outlined
-              dense
-              class="field-control"
-            />
-            <q-input
-              v-model="leaderForm.fechaEntrada"
-              label="Fecha inicio"
-              outlined
-              dense
-              readonly
-              class="field-control cursor-pointer"
-            >
-              <template #append>
-                <CalendarDays :size="18" />
-                <q-popup-proxy cover transition-show="scale" transition-hide="scale">
-                  <q-date v-model="leaderForm.fechaEntrada" mask="YYYY-MM-DD">
-                    <div class="row items-center justify-end">
-                      <q-btn v-close-popup flat label="OK" color="primary" />
-                    </div>
-                  </q-date>
-                </q-popup-proxy>
-              </template>
-            </q-input>
-            <q-input
-              v-model="leaderForm.inicio"
-              label="Hora inicio"
-              outlined
-              dense
-              readonly
-              class="field-control"
-              ><template #append>
-                <Clock3 :size="18" />
-                <q-popup-proxy cover transition-show="scale" transition-hide="scale">
-                  <q-time v-model="leaderForm.inicio" format24h>
-                    <div class="row items-center justify-end">
-                      <q-btn v-close-popup flat label="OK" color="primary" />
-                    </div>
-                  </q-time>
-                </q-popup-proxy> </template
-            ></q-input>
-            <q-input
-              v-model="leaderForm.fechaSalida"
-              label="Fecha finalizó"
-              outlined
-              dense
-              readonly
-              class="field-control cursor-pointer"
-            >
-              <template #append>
-                <CalendarDays :size="18" />
-                <q-popup-proxy cover transition-show="scale" transition-hide="scale">
-                  <q-date v-model="leaderForm.fechaSalida" mask="YYYY-MM-DD">
-                    <div class="row items-center justify-end">
-                      <q-btn v-close-popup flat label="OK" color="primary" />
-                    </div>
-                  </q-date>
-                </q-popup-proxy>
-              </template>
-            </q-input>
-            <q-input
-              v-model="leaderForm.fin"
-              label="Hora finalizó"
-              outlined
-              dense
-              readonly
-              class="field-control"
-              ><template #append>
-                <Clock3 :size="18" />
-                <q-popup-proxy cover transition-show="scale" transition-hide="scale">
-                  <q-time v-model="leaderForm.fin" format24h>
-                    <div class="row items-center justify-end">
-                      <q-btn v-close-popup flat label="OK" color="primary" />
-                    </div>
-                  </q-time>
-                </q-popup-proxy> </template
-            ></q-input>
-            <q-select
-              v-model="leaderForm.status"
-              :options="statusOptions"
-              label="Estado"
-              outlined
-              dense
-              class="field-control"
-            />
-            <q-input
-              v-model="leaderForm.note"
-              label="Nota opcional"
-              outlined
-              dense
-              class="field-control leader-dialog-note"
-            />
-          </div>
+          <section class="dialog-form-section">
+            <div class="dialog-form-heading">
+              <strong>Horario de línea</strong>
+              <span>Inicio y finalización</span>
+            </div>
+            <div class="leader-schedule-grid">
+              <q-input
+                v-model="leaderForm.fechaEntrada"
+                label="Fecha inicio"
+                outlined
+                dense
+                readonly
+                class="field-control cursor-pointer"
+              >
+                <template #append>
+                  <CalendarDays :size="18" />
+                  <q-popup-proxy cover transition-show="scale" transition-hide="scale">
+                    <q-date v-model="leaderForm.fechaEntrada" mask="YYYY-MM-DD">
+                      <div class="row items-center justify-end">
+                        <q-btn v-close-popup flat label="OK" color="primary" />
+                      </div>
+                    </q-date>
+                  </q-popup-proxy>
+                </template>
+              </q-input>
+              <q-input
+                v-model="leaderForm.inicio"
+                type="time"
+                label="Hora inicio"
+                outlined
+                dense
+                class="field-control"
+              />
+              <q-input
+                v-model="leaderForm.fechaSalida"
+                label="Fecha finalizó"
+                outlined
+                dense
+                readonly
+                class="field-control cursor-pointer"
+              >
+                <template #append>
+                  <CalendarDays :size="18" />
+                  <q-popup-proxy cover transition-show="scale" transition-hide="scale">
+                    <q-date v-model="leaderForm.fechaSalida" mask="YYYY-MM-DD">
+                      <div class="row items-center justify-end">
+                        <q-btn v-close-popup flat label="OK" color="primary" />
+                      </div>
+                    </q-date>
+                  </q-popup-proxy>
+                </template>
+              </q-input>
+              <q-input
+                v-model="leaderForm.fin"
+                type="time"
+                label="Hora finalizó"
+                outlined
+                dense
+                class="field-control"
+              />
+            </div>
+          </section>
+
+          <section class="dialog-form-section">
+            <div class="dialog-form-heading">
+              <strong>Novedades de producción</strong>
+              <span>Incidencias del turno</span>
+            </div>
+            <div class="leader-incident-grid">
+              <q-input
+                v-model.number="leaderForm.muertos"
+                type="number"
+                label="Muertos"
+                outlined
+                dense
+                class="field-control"
+              />
+              <q-input
+                v-model.number="leaderForm.decomisos"
+                type="number"
+                label="Decomisos"
+                outlined
+                dense
+                class="field-control"
+              />
+              <q-input
+                v-model.number="leaderForm.decomisosVisc"
+                type="number"
+                label="Vísceras"
+                outlined
+                dense
+                class="field-control"
+              />
+              <q-input
+                v-model="leaderForm.note"
+                label="Nota opcional"
+                outlined
+                dense
+                autogrow
+                class="field-control leader-dialog-note"
+              />
+            </div>
+          </section>
         </div>
 
         <footer class="dialog-footer">
@@ -226,7 +208,7 @@
             Cancelar
           </button>
           <button class="primary-action" type="button" @click="saveLeaderUpdate">
-            <Send :size="17" /> Informar a balanza
+            <Send :size="17" /> Informar
           </button>
         </footer>
       </q-card>
@@ -240,20 +222,9 @@
 
 <script setup>
 import { computed, reactive, ref, watch } from 'vue'
-import {
-  CalendarDays,
-  CheckCircle2,
-  ChevronRight,
-  Clock3,
-  Radio,
-  Send,
-  Truck,
-  X,
-} from '@lucide/vue'
+import { CalendarDays, CheckCircle2, ChevronRight, Radio, Send, Truck, X } from '@lucide/vue'
 
 const storageKey = 'mark-frigorifico-operacion-v2'
-
-const statusOptions = ['Pendiente', 'En descarga', 'En linea', 'Finalizado', 'SAP creado']
 
 const trucks = ref(loadTrucks())
 const selectedTruckId = ref(trucks.value[0]?.id)
@@ -265,10 +236,9 @@ const leaderForm = reactive({
   decomisos: 0,
   decomisosVisc: 0,
   fechaEntrada: new Date().toISOString().slice(0, 10),
-  fechaSalida: '',
+  fechaSalida: new Date().toISOString().slice(0, 10),
   inicio: '',
   fin: '',
-  status: 'En linea',
   note: '',
 })
 
@@ -276,7 +246,6 @@ const columns = [
   { name: 'client', label: 'Cliente', field: 'client', align: 'left', sortable: true },
   { name: 'patentes', label: 'Patentes', field: 'chasis', align: 'left' },
   { name: 'date', label: 'Fecha', field: (row) => truckDate(row), align: 'left' },
-  { name: 'status', label: 'Estado', field: 'status', align: 'center' },
 ]
 
 const selectedTruck = computed(() =>
@@ -298,10 +267,9 @@ watch(selectedTruck, (truck) => {
     decomisosVisc: truck.decomisosVisc,
     fechaEntrada:
       truck.fechaEntrada || truck.date?.slice(0, 10) || new Date().toISOString().slice(0, 10),
-    fechaSalida: truck.fechaSalida || '',
+    fechaSalida: truck.fechaSalida || new Date().toISOString().slice(0, 10),
     inicio: truck.inicio,
     fin: truck.fin,
-    status: truck.status,
     note: truck.note,
   })
 })
@@ -330,14 +298,7 @@ function saveLeaderUpdate() {
 
   Object.assign(truck, leaderForm)
   leaderDialog.value = false
-  showFeedback('Novedad informada a balanza')
-}
-
-function statusClass(status) {
-  if (status === 'SAP creado' || status === 'Finalizado') return 'status-success'
-  if (status === 'ESTIMADO') return 'status-warning'
-  if (status === 'En linea' || status === 'En descarga') return 'status-active'
-  return 'status-neutral'
+  showFeedback('Novedad informada')
 }
 
 function openTruckAction(truck) {

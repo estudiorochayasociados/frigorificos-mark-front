@@ -50,13 +50,6 @@
           <template #body-cell-date="props">
             <q-td :props="props">{{ truckDate(props.row) }}</q-td>
           </template>
-          <template #body-cell-status="props">
-            <q-td :props="props"
-              ><span :class="['status-pill', statusClass(props.row.status)]">{{
-                props.row.status
-              }}</span></q-td
-            >
-          </template>
         </q-table>
 
         <div class="truck-list lt-md">
@@ -72,7 +65,6 @@
                 <strong>{{ truck.client }}</strong
                 ><span>{{ truck.chasis }} / {{ truck.acoplado }}</span>
               </div>
-              <span :class="['status-pill', statusClass(truck.status)]">{{ truck.status }}</span>
             </div>
             <div class="truck-card-values">
               <div>
@@ -108,62 +100,50 @@
         </header>
 
         <div class="detail-body">
-          <div class="detail-main-row">
-            <div>
+          <div class="detail-summary-row">
+            <div class="detail-summary-item">
               <span>Patentes</span>
               <strong>{{ detailTruck.chasis }} / {{ detailTruck.acoplado || '-' }}</strong>
             </div>
-            <div>
+            <div class="detail-summary-item">
               <span>Fecha</span>
               <strong>{{ truckDate(detailTruck) }}</strong>
             </div>
-            <div>
-              <span>Estado</span>
-              <strong
-                ><span :class="['status-pill', statusClass(detailTruck.status)]">{{
-                  detailTruck.status
-                }}</span></strong
-              >
-            </div>
           </div>
 
-          <div class="detail-grid">
-            <div class="detail-item">
-              <span>DTE</span><strong>{{ detailTruck.dte || '-' }}</strong>
+          <div class="detail-sheet">
+            <div class="detail-sheet-row">
+              <span>DTE</span>
+              <strong>{{ detailTruck.dte || '-' }}</strong>
+              <span>Remito</span>
+              <strong>{{ detailTruck.remito || '-' }}</strong>
             </div>
-            <div class="detail-item">
-              <span>Remito</span><strong>{{ detailTruck.remito || '-' }}</strong>
+            <div class="detail-sheet-row">
+              <span>Neto origen</span>
+              <strong>{{ kg(calcNeto(detailTruck.brutoOrigen, detailTruck.taraOrigen)) }}</strong>
+              <span>Neto planta</span>
+              <strong>{{ kg(calcNeto(detailTruck.brutoPlanta, detailTruck.taraPlanta)) }}</strong>
             </div>
-            <div class="detail-item">
-              <span>Neto origen</span
-              ><strong>{{ kg(calcNeto(detailTruck.brutoOrigen, detailTruck.taraOrigen)) }}</strong>
-            </div>
-            <div class="detail-item">
-              <span>Neto planta</span
-              ><strong>{{ kg(calcNeto(detailTruck.brutoPlanta, detailTruck.taraPlanta)) }}</strong>
-            </div>
-            <div class="detail-item">
-              <span>Aves</span
-              ><strong>{{ Number(detailTruck.avesOrigen || 0).toLocaleString('es-AR') }}</strong>
-            </div>
-            <div class="detail-item">
-              <span>Promedio</span
-              ><strong>{{
+            <div class="detail-sheet-row">
+              <span>Aves</span>
+              <strong>{{ Number(detailTruck.avesOrigen || 0).toLocaleString('es-AR') }}</strong>
+              <span>Promedio</span>
+              <strong>{{
                 avg(
                   calcNeto(detailTruck.brutoPlanta, detailTruck.taraPlanta),
                   detailTruck.avesOrigen,
                 )
               }}</strong>
             </div>
-            <div class="detail-item">
-              <span>Muertos</span><strong>{{ detailTruck.muertos || 0 }}</strong>
+            <div class="detail-sheet-row">
+              <span>Muertos</span>
+              <strong>{{ detailTruck.muertos || 0 }}</strong>
+              <span>Decomisos</span>
+              <strong>{{ detailTruck.decomisos || 0 }}</strong>
             </div>
-            <div class="detail-item">
-              <span>Decomisos</span><strong>{{ detailTruck.decomisos || 0 }}</strong>
-            </div>
-            <div class="detail-item">
-              <span>Horario</span
-              ><strong
+            <div class="detail-sheet-row detail-sheet-row--single">
+              <span>Horario</span>
+              <strong
                 >{{ detailTruck.inicio || '--:--' }} - {{ detailTruck.fin || '--:--' }}</strong
               >
             </div>
@@ -199,8 +179,8 @@
               <div class="form-section-heading">
                 <span>1</span>
                 <div>
-                  <h3>Identificación</h3>
-                  <p>Datos del DTE, remito y vehiculo.</p>
+                  <h3>Identificación y documentos</h3>
+                  <p>Cliente, trazabilidad y comprobantes.</p>
                 </div>
               </div>
               <div class="form-grid form-grid--dialog">
@@ -209,7 +189,7 @@
                   label="Cliente / Granja *"
                   outlined
                   dense
-                  class="field-control"
+                  class="field-control field-span-2"
                   :rules="[(value) => !!value || 'Campo obligatorio']"
                 />
                 <q-input
@@ -241,6 +221,18 @@
                   dense
                   class="field-control"
                 />
+              </div>
+            </section>
+
+            <section class="form-section">
+              <div class="form-section-heading">
+                <span>2</span>
+                <div>
+                  <h3>Vehículo y turno</h3>
+                  <p>Patentes y horarios de la operación.</p>
+                </div>
+              </div>
+              <div class="form-grid form-grid--dialog">
                 <q-input
                   v-model="form.chasis"
                   label="Patente chasis *"
@@ -256,6 +248,8 @@
                   dense
                   class="field-control uppercase-field"
                 />
+                <div class="field-placeholder gt-xs"></div>
+                <div class="field-placeholder gt-xs"></div>
                 <q-input
                   v-model="form.fechaEntrada"
                   label="Fecha inicio"
@@ -275,21 +269,13 @@
                 ></q-input>
                 <q-input
                   v-model="form.inicio"
+                  type="time"
                   label="Hora inicio"
                   outlined
                   dense
-                  readonly
                   class="field-control"
-                  ><template #append>
-                    <Clock3 :size="18" />
-                    <q-popup-proxy cover transition-show="scale" transition-hide="scale">
-                      <q-time v-model="form.inicio" format24h>
-                        <div class="row items-center justify-end">
-                          <q-btn v-close-popup flat label="OK" color="primary" />
-                        </div>
-                      </q-time>
-                    </q-popup-proxy> </template></q-input
-                ><q-input
+                />
+                <q-input
                   v-model="form.fechaSalida"
                   label="Fecha finalizó"
                   outlined
@@ -308,27 +294,18 @@
                 ></q-input>
                 <q-input
                   v-model="form.fin"
+                  type="time"
                   label="Hora finalizó"
                   outlined
                   dense
-                  readonly
                   class="field-control"
-                  ><template #append>
-                    <Clock3 :size="18" />
-                    <q-popup-proxy cover transition-show="scale" transition-hide="scale">
-                      <q-time v-model="form.fin" format24h>
-                        <div class="row items-center justify-end">
-                          <q-btn v-close-popup flat label="OK" color="primary" />
-                        </div>
-                      </q-time>
-                    </q-popup-proxy> </template
-                ></q-input>
+                />
               </div>
             </section>
 
             <section class="form-section">
               <div class="form-section-heading">
-                <span>2</span>
+                <span>3</span>
                 <div>
                   <h3>Pesaje y aves</h3>
                   <p>Ingresa valores en kilogramos, sin puntos.</p>
@@ -437,17 +414,7 @@
 
 <script setup>
 import { computed, reactive, ref, watch } from 'vue'
-import {
-  CalendarDays,
-  CheckCircle2,
-  ChevronRight,
-  Clock3,
-  Pencil,
-  Plus,
-  Save,
-  Truck,
-  X,
-} from '@lucide/vue'
+import { CalendarDays, CheckCircle2, ChevronRight, Pencil, Plus, Save, Truck, X } from '@lucide/vue'
 
 const storageKey = 'mark-frigorifico-operacion-v2'
 
@@ -466,7 +433,7 @@ const emptyForm = () => ({
   chasis: '',
   acoplado: '',
   fechaEntrada: new Date().toISOString().slice(0, 10),
-  fechaSalida: '',
+  fechaSalida: new Date().toISOString().slice(0, 10),
   brutoOrigen: 0,
   taraOrigen: 0,
   brutoPlanta: 0,
@@ -481,7 +448,6 @@ const emptyForm = () => ({
   codigoSn: 'SN-001',
   loteSenasa: julianLot(),
   date: new Date().toISOString(),
-  status: 'Pendiente',
   note: '',
   sapCreated: false,
 })
@@ -492,7 +458,6 @@ const columns = [
   { name: 'client', label: 'Cliente', field: 'client', align: 'left', sortable: true },
   { name: 'patentes', label: 'Patentes', field: 'chasis', align: 'left' },
   { name: 'date', label: 'Fecha', field: (row) => truckDate(row), align: 'left' },
-  { name: 'status', label: 'Estado', field: 'status', align: 'center' },
 ]
 
 const detailTruck = computed(() => trucks.value.find((truck) => truck.id === detailTruckId.value))
@@ -549,7 +514,10 @@ function newTruck() {
 }
 
 function editTruck(truck) {
-  Object.assign(form, truck)
+  Object.assign(form, {
+    ...truck,
+    fechaSalida: truck.fechaSalida || new Date().toISOString().slice(0, 10),
+  })
   detailDialog.value = false
   formDialog.value = true
 }
@@ -588,13 +556,6 @@ function julianLot() {
   return `${now.getFullYear()}-${Math.floor((now - start) / 86400000)
     .toString()
     .padStart(3, '0')}`
-}
-
-function statusClass(status) {
-  if (status === 'SAP creado' || status === 'Finalizado') return 'status-success'
-  if (status === 'ESTIMADO') return 'status-warning'
-  if (status === 'En linea' || status === 'En descarga') return 'status-active'
-  return 'status-neutral'
 }
 
 function openTruckDetail(truck) {

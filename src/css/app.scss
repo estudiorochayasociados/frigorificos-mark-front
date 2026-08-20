@@ -739,8 +739,8 @@ button {
 .truck-dialog,
 .detail-dialog,
 .leader-dialog {
-  width: min(760px, 94vw);
-  max-width: 760px !important;
+  width: min(980px, 96vw);
+  max-width: 980px !important;
   max-height: 88vh;
   border-radius: 10px !important;
 }
@@ -751,18 +751,44 @@ button {
 }
 
 .leader-dialog {
-  width: min(560px, 94vw);
-  max-width: 560px !important;
+  width: min(820px, 94vw);
+  max-width: 820px !important;
 }
 
 .leader-dialog-body {
-  padding: 14px;
+  padding: 4px 14px 10px;
 }
 
-.leader-dialog-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+.dialog-form-section {
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.dialog-form-section:last-child {
+  border-bottom: 0;
+}
+
+.dialog-form-heading {
+  display: flex;
   gap: 8px;
+  align-items: baseline;
+  margin-bottom: 7px;
+}
+
+.dialog-form-heading strong {
+  font-size: 13px;
+}
+
+.dialog-form-heading span {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.leader-schedule-grid,
+.leader-incident-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 7px;
 }
 
 .leader-dialog-note {
@@ -773,47 +799,67 @@ button {
   padding: 14px;
 }
 
-.detail-main-row,
-.detail-grid {
+.detail-summary-row {
   display: grid;
-  gap: 8px;
+  grid-template-columns: 1.4fr 0.8fr;
+  gap: 14px;
+  padding: 2px 0 12px;
 }
 
-.detail-main-row {
-  grid-template-columns: 1.4fr 0.8fr 0.8fr;
-  padding-bottom: 12px;
+.detail-summary-item {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  min-width: 0;
+}
+
+.detail-sheet {
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+
+.detail-sheet-row {
+  display: grid;
+  grid-template-columns: 120px minmax(0, 1fr) 120px minmax(0, 1fr);
+  min-height: 38px;
   border-bottom: 1px solid var(--line);
 }
 
-.detail-main-row > div,
-.detail-item {
-  display: grid;
-  gap: 4px;
-  min-width: 0;
-  padding: 9px 10px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
+.detail-sheet-row:last-child {
+  border-bottom: 0;
+}
+
+.detail-sheet-row--single {
+  grid-template-columns: 120px minmax(0, 1fr);
+}
+
+.detail-sheet-row span,
+.detail-summary-item span {
+  padding: 10px 10px;
   background: #fafafa;
-}
-
-.detail-grid {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  margin-top: 12px;
-}
-
-.detail-main-row span,
-.detail-item span {
   color: var(--muted);
   font-size: 10px;
   font-weight: 600;
 }
 
-.detail-main-row strong,
-.detail-item strong {
+.detail-summary-item span {
+  padding: 0;
+  background: transparent;
+}
+
+.detail-sheet-row strong,
+.detail-summary-item strong {
   overflow: hidden;
+  padding: 10px 10px;
   font-size: 13px;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.detail-summary-item strong {
+  padding: 0;
+  font-size: 14px;
 }
 
 .dialog-header,
@@ -939,15 +985,19 @@ button {
 }
 
 .form-grid--dialog {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
 .form-grid--compact-two {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
-.field-wide {
-  grid-column: span 1;
+.field-span-2 {
+  grid-column: span 2;
+}
+
+.field-placeholder {
+  min-height: 1px;
 }
 
 .form-grid-spaced {
@@ -1191,13 +1241,18 @@ button {
     font-size: 10px;
   }
 
-  .detail-main-row,
-  .detail-grid {
+  .detail-summary-row {
     grid-template-columns: 1fr;
+    gap: 6px;
   }
 
-  .leader-dialog-grid {
-    grid-template-columns: 1fr;
+  .detail-sheet-row {
+    grid-template-columns: 92px minmax(0, 1fr);
+  }
+
+  .detail-sheet-row span:nth-of-type(2),
+  .detail-sheet-row strong:nth-of-type(2) {
+    border-top: 1px solid var(--line);
   }
 
   .truck-card-footer button {
@@ -1246,22 +1301,26 @@ button {
   }
 
   .form-grid,
-  .form-grid--two,
   .weight-groups {
     grid-template-columns: 1fr;
   }
 
-  .field-wide {
-    grid-column: auto;
+  .form-grid--dialog,
+  .form-grid--two,
+  .form-grid--compact-two,
+  .leader-schedule-grid,
+  .leader-incident-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .weight-group .form-grid--two,
-  .incident-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-
-  .incident-grid > :last-child {
+  .field-span-2,
+  .leader-dialog-note {
     grid-column: 1 / -1;
+  }
+
+  .dialog-form-heading {
+    display: grid;
+    gap: 0;
   }
 
   .calculation-strip {
