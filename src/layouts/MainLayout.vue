@@ -3,7 +3,7 @@
     <q-header class="mobile-header lt-md">
       <q-toolbar>
         <img class="mobile-logo" src="/images/logo.png" alt="Mark" />
-        <q-toolbar-title class="mobile-title">Zona 1</q-toolbar-title>
+        <q-toolbar-title class="mobile-title">{{ currentSectionLabel }}</q-toolbar-title>
         <button class="role-pill" type="button">
           <UserRound :size="16" />
           {{ currentRoleLabel }}
@@ -46,9 +46,9 @@
             <Scale :size="20" />
             <span>Balanza</span>
           </router-link>
-          <router-link v-if="currentRole === 'lider'" to="/lider" class="nav-item">
-            <UsersRound :size="20" />
-            <span>Lider de linea</span>
+          <router-link v-if="currentRole === 'zona2'" to="/zona-2" class="nav-item">
+            <Boxes :size="20" />
+            <span>Produccion</span>
           </router-link>
         </nav>
 
@@ -94,9 +94,9 @@
         <Scale :size="21" />
         <span>Balanza</span>
       </router-link>
-      <router-link v-if="currentRole === 'lider'" to="/lider" class="bottom-nav-item">
-        <UsersRound :size="21" />
-        <span>Lider</span>
+      <router-link v-if="currentRole === 'zona2'" to="/zona-2" class="bottom-nav-item">
+        <Boxes :size="21" />
+        <span>Produccion</span>
       </router-link>
     </q-footer>
   </q-layout>
@@ -105,7 +105,7 @@
 <script setup>
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ChevronDown, ChevronsUpDown, Scale, UserRound, UsersRound } from '@lucide/vue'
+import { Boxes, ChevronDown, ChevronsUpDown, Scale, UserRound } from '@lucide/vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -118,20 +118,27 @@ const roles = [
     icon: Scale,
   },
   {
-    value: 'lider',
-    label: 'Lider de linea',
-    caption: 'Incidencias y tiempos',
-    icon: UsersRound,
+    value: 'zona2',
+    label: 'Produccion',
+    caption: 'Produccion y SAP',
+    icon: Boxes,
   },
 ]
 
-const currentRole = computed(() => (route.path.startsWith('/lider') ? 'lider' : 'balanza'))
+const currentRole = computed(() => {
+  if (route.path.startsWith('/zona-2')) return 'zona2'
+  return 'balanza'
+})
 const currentRoleData = computed(() => roles.find((role) => role.value === currentRole.value))
 const currentRoleLabel = computed(() => currentRoleData.value?.label)
 const currentRoleCaption = computed(() => currentRoleData.value?.caption)
 const currentRoleIcon = computed(() => currentRoleData.value?.icon)
+const currentSectionLabel = computed(() =>
+  currentRole.value === 'zona2' ? 'Produccion' : 'Zona 1',
+)
 
 function setRole(role) {
-  router.push(role === 'lider' ? '/lider' : '/balanza')
+  if (role === 'zona2') router.push('/zona-2')
+  else router.push('/balanza')
 }
 </script>

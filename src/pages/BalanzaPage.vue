@@ -76,7 +76,7 @@
               </div>
             </div>
             <div class="truck-card-footer">
-              <span>Ver detalle</span>
+              <span>Editar proceso</span>
               <button type="button">Abrir <ChevronRight :size="16" /></button>
             </div>
           </article>
@@ -119,27 +119,48 @@
               <strong>{{ detailTruck.remito || '-' }}</strong>
             </div>
             <div class="detail-sheet-row">
+              <span>Granja comercial</span>
+              <strong>{{ detailTruck.comercial || detailTruck.client || '-' }}</strong>
+              <span>Horario llegada</span>
+              <strong>{{ detailTruck.horarioLlegada || '--:--' }}</strong>
+            </div>
+            <div class="detail-sheet-row">
               <span>Neto origen</span>
-              <strong>{{ kg(calcNeto(detailTruck.brutoOrigen, detailTruck.taraOrigen)) }}</strong>
+              <strong>{{ kg(metricsFor(detailTruck).netoOrigen) }}</strong>
               <span>Neto planta</span>
-              <strong>{{ kg(calcNeto(detailTruck.brutoPlanta, detailTruck.taraPlanta)) }}</strong>
+              <strong>{{ kg(metricsFor(detailTruck).netoPlanta) }}</strong>
             </div>
             <div class="detail-sheet-row">
               <span>Aves</span>
               <strong>{{ Number(detailTruck.avesOrigen || 0).toLocaleString('es-AR') }}</strong>
               <span>Promedio</span>
-              <strong>{{
-                avg(
-                  calcNeto(detailTruck.brutoPlanta, detailTruck.taraPlanta),
-                  detailTruck.avesOrigen,
-                )
-              }}</strong>
+              <strong>{{ avg(metricsFor(detailTruck).promedio) }}</strong>
             </div>
             <div class="detail-sheet-row">
               <span>Muertos</span>
               <strong>{{ detailTruck.muertos || 0 }}</strong>
               <span>Decomisos</span>
-              <strong>{{ detailTruck.decomisos || 0 }}</strong>
+              <strong>{{
+                Number(detailTruck.decomisos || 0) + Number(detailTruck.decomisosVisc || 0)
+              }}</strong>
+            </div>
+            <div class="detail-sheet-row">
+              <span>Kg muertos</span>
+              <strong>{{ kg(metricsFor(detailTruck).kgMuertos) }}</strong>
+              <span>Kg decom.</span>
+              <strong>{{ kg(metricsFor(detailTruck).kgDecomisados) }}</strong>
+            </div>
+            <div class="detail-sheet-row">
+              <span>% merma</span>
+              <strong>{{ pct(metricsFor(detailTruck).porcentajeMerma) }}</strong>
+              <span>% muertos</span>
+              <strong>{{ pct(metricsFor(detailTruck).porcentajeMuertos) }}</strong>
+            </div>
+            <div class="detail-sheet-row">
+              <span>% decom.</span>
+              <strong>{{ pct(metricsFor(detailTruck).porcentajeDecomisados) }}</strong>
+              <span>Vacías</span>
+              <strong>{{ detailTruck.vacias || 0 }}</strong>
             </div>
             <div class="detail-sheet-row detail-sheet-row--single">
               <span>Horario</span>
@@ -175,231 +196,431 @@
           </header>
 
           <div class="dialog-body">
-            <section class="form-section">
-              <div class="form-section-heading">
-                <span>1</span>
-                <div>
-                  <h3>Identificación y documentos</h3>
-                  <p>Cliente, trazabilidad y comprobantes.</p>
-                </div>
-              </div>
-              <div class="form-grid form-grid--dialog">
-                <q-input
-                  v-model="form.client"
-                  label="Cliente / Granja *"
-                  outlined
-                  dense
-                  class="field-control field-span-2"
-                  :rules="[(value) => !!value || 'Campo obligatorio']"
-                />
-                <q-input
-                  v-model="form.codigoSn"
-                  label="Codigo cliente S/N"
-                  outlined
-                  dense
-                  class="field-control"
-                />
-                <q-input
-                  v-model="form.loteSenasa"
-                  label="Lote SENASA"
-                  outlined
-                  dense
-                  class="field-control"
-                />
-                <q-input
-                  v-model="form.dte"
-                  label="Numero DTE *"
-                  outlined
-                  dense
-                  class="field-control"
-                  :rules="[(value) => !!value || 'Campo obligatorio']"
-                />
-                <q-input
-                  v-model="form.remito"
-                  label="Remito"
-                  outlined
-                  dense
-                  class="field-control"
-                />
-              </div>
-            </section>
+            <div v-if="formMode === 'diagram'" class="step-diagram">
+              <button class="step-node" type="button" @click="openFormStep(1)">
+                <span class="step-node-icon" :class="{ 'step-node-icon--done': isStep1Complete }">
+                  <ClipboardList :size="34" />
+                </span>
+                <strong>Paso 1</strong>
+                <small>Ingreso de camión</small>
+              </button>
 
-            <section class="form-section">
-              <div class="form-section-heading">
-                <span>2</span>
-                <div>
-                  <h3>Vehículo y turno</h3>
-                  <p>Patentes y horarios de la operación.</p>
-                </div>
-              </div>
-              <div class="form-grid form-grid--dialog">
-                <q-input
-                  v-model="form.chasis"
-                  label="Patente chasis *"
-                  outlined
-                  dense
-                  class="field-control uppercase-field"
-                  :rules="[(value) => !!value || 'Campo obligatorio']"
-                />
-                <q-input
-                  v-model="form.acoplado"
-                  label="Patente acoplado"
-                  outlined
-                  dense
-                  class="field-control uppercase-field"
-                />
-                <div class="field-placeholder gt-xs"></div>
-                <div class="field-placeholder gt-xs"></div>
-                <q-input
-                  v-model="form.fechaEntrada"
-                  label="Fecha inicio"
-                  outlined
-                  dense
-                  readonly
-                  class="field-control"
-                  ><template #append>
-                    <CalendarDays :size="18" />
-                    <q-popup-proxy cover transition-show="scale" transition-hide="scale">
-                      <q-date v-model="form.fechaEntrada" mask="YYYY-MM-DD">
-                        <div class="row items-center justify-end">
-                          <q-btn v-close-popup flat label="OK" color="primary" />
-                        </div>
-                      </q-date>
-                    </q-popup-proxy> </template
-                ></q-input>
-                <q-input
-                  v-model="form.inicio"
-                  type="time"
-                  label="Hora inicio"
-                  outlined
-                  dense
-                  class="field-control"
-                />
-                <q-input
-                  v-model="form.fechaSalida"
-                  label="Fecha finalizó"
-                  outlined
-                  dense
-                  readonly
-                  class="field-control"
-                  ><template #append>
-                    <CalendarDays :size="18" />
-                    <q-popup-proxy cover transition-show="scale" transition-hide="scale">
-                      <q-date v-model="form.fechaSalida" mask="YYYY-MM-DD">
-                        <div class="row items-center justify-end">
-                          <q-btn v-close-popup flat label="OK" color="primary" />
-                        </div>
-                      </q-date>
-                    </q-popup-proxy> </template
-                ></q-input>
-                <q-input
-                  v-model="form.fin"
-                  type="time"
-                  label="Hora finalizó"
-                  outlined
-                  dense
-                  class="field-control"
-                />
-              </div>
-            </section>
+              <div
+                class="step-connector"
+                :class="{ 'step-connector--active': isStep1Complete }"
+              ></div>
 
-            <section class="form-section">
-              <div class="form-section-heading">
-                <span>3</span>
-                <div>
-                  <h3>Pesaje y aves</h3>
-                  <p>Ingresa valores en kilogramos, sin puntos.</p>
-                </div>
-              </div>
-              <div class="weight-groups">
-                <div class="weight-group">
-                  <h4>Origen</h4>
-                  <div class="form-grid form-grid--compact-two">
+              <button
+                class="step-node"
+                :class="{ 'step-node--locked': !isStep1Complete }"
+                type="button"
+                :disabled="!isStep1Complete"
+                @click="openFormStep(2)"
+              >
+                <span class="step-node-icon" :class="{ 'step-node-icon--done': isStep1Complete }">
+                  <Factory :size="34" />
+                </span>
+                <strong>Paso 2</strong>
+                <small>Datos de línea</small>
+              </button>
+            </div>
+
+            <q-stepper
+              v-else
+              v-model="formStep"
+              flat
+              animated
+              class="balanza-stepper"
+              :class="{ 'balanza-stepper--single': !form.id }"
+            >
+              <q-step
+                :name="1"
+                title="Ingreso de camión"
+                icon="local_shipping"
+                :done="formStep > 1"
+              >
+                <section class="form-section">
+                  <div class="form-section-heading">
+                    <span>1</span>
+                    <div>
+                      <h3>Identificación y documentos</h3>
+                      <p>Cliente, trazabilidad y comprobantes.</p>
+                    </div>
+                  </div>
+                  <div class="form-grid form-grid--dialog">
                     <q-input
-                      v-model.number="form.brutoOrigen"
-                      type="number"
-                      label="Peso bruto"
-                      suffix="kg"
+                      v-model="form.client"
+                      label="Cliente / Granja *"
+                      outlined
+                      dense
+                      class="field-control field-span-2"
+                      :rules="[(value) => !!value || 'Campo obligatorio']"
+                    />
+                    <q-input
+                      v-model="form.codigoSn"
+                      label="Codigo cliente S/N"
                       outlined
                       dense
                       class="field-control"
-                    /><q-input
-                      v-model.number="form.taraOrigen"
-                      type="number"
-                      label="Tara"
-                      suffix="kg"
+                    />
+                    <q-input
+                      v-model="form.loteSenasa"
+                      label="Lote SENASA"
+                      outlined
+                      dense
+                      class="field-control"
+                    />
+                    <q-input
+                      v-model="form.dte"
+                      label="Numero DTE *"
+                      outlined
+                      dense
+                      class="field-control"
+                      :rules="[(value) => !!value || 'Campo obligatorio']"
+                    />
+                    <q-input
+                      v-model="form.remito"
+                      label="Remito"
+                      outlined
+                      dense
+                      class="field-control"
+                    />
+                    <q-input
+                      v-model="form.comercial"
+                      label="Granja comercial"
                       outlined
                       dense
                       class="field-control"
                     />
                   </div>
-                  <div class="calculated-line">
-                    <span>Neto origen</span
-                    ><strong>{{ kg(calcNeto(form.brutoOrigen, form.taraOrigen)) }}</strong>
+                </section>
+
+                <section class="form-section">
+                  <div class="form-section-heading">
+                    <span>2</span>
+                    <div>
+                      <h3>Vehículo y turno</h3>
+                      <p>Patentes y horarios de la operación.</p>
+                    </div>
                   </div>
-                </div>
-                <div class="weight-group weight-group--highlight">
-                  <h4>Planta</h4>
-                  <div class="form-grid form-grid--compact-two">
+                  <div class="form-grid form-grid--dialog">
                     <q-input
-                      v-model.number="form.brutoPlanta"
-                      type="number"
-                      label="Peso bruto"
-                      suffix="kg"
+                      v-model="form.chasis"
+                      label="Patente chasis *"
                       outlined
                       dense
-                      class="field-control"
-                    /><q-input
-                      v-model.number="form.taraPlanta"
-                      type="number"
-                      label="Tara"
-                      suffix="kg"
+                      class="field-control uppercase-field"
+                      :rules="[(value) => !!value || 'Campo obligatorio']"
+                    />
+                    <q-input
+                      v-model="form.acoplado"
+                      label="Patente acoplado"
+                      outlined
+                      dense
+                      class="field-control uppercase-field"
+                    />
+                    <q-input
+                      v-model="form.horarioLlegada"
+                      type="time"
+                      label="Horario llegada"
                       outlined
                       dense
                       class="field-control"
                     />
                   </div>
-                  <div class="calculated-line">
-                    <span>Neto planta</span
-                    ><strong>{{ kg(calcNeto(form.brutoPlanta, form.taraPlanta)) }}</strong>
+                </section>
+
+                <section class="form-section">
+                  <div class="form-section-heading">
+                    <span>3</span>
+                    <div>
+                      <h3>Pesaje y aves</h3>
+                      <p>Ingresa valores en kilogramos, sin puntos.</p>
+                    </div>
                   </div>
-                </div>
-              </div>
-              <div class="form-grid form-grid--two form-grid-spaced">
-                <q-input
-                  v-model.number="form.avesOrigen"
-                  type="number"
-                  label="Aves informadas por granja"
-                  outlined
-                  dense
-                  class="field-control"
-                /><q-input
-                  v-model.number="form.avesDte"
-                  type="number"
-                  label="Cantidad aves DTE"
-                  outlined
-                  dense
-                  class="field-control"
-                />
-              </div>
-              <div class="calculation-strip">
-                <div>
-                  <span>Diferencia neta</span><strong>{{ kg(calcMerma(form)) }}</strong>
-                </div>
-                <div>
-                  <span>Peso promedio</span
-                  ><strong>{{
-                    avg(calcNeto(form.brutoPlanta, form.taraPlanta), form.avesOrigen)
-                  }}</strong>
-                </div>
-              </div>
-            </section>
+                  <div class="weight-groups">
+                    <div class="weight-group">
+                      <h4>Origen</h4>
+                      <div class="form-grid form-grid--compact-two">
+                        <q-input
+                          v-model.number="form.brutoOrigen"
+                          type="number"
+                          label="Peso bruto"
+                          suffix="kg"
+                          outlined
+                          dense
+                          class="field-control"
+                        /><q-input
+                          v-model.number="form.taraOrigen"
+                          type="number"
+                          label="Tara"
+                          suffix="kg"
+                          outlined
+                          dense
+                          class="field-control"
+                        />
+                      </div>
+                    </div>
+                    <div class="weight-group weight-group--highlight">
+                      <h4>Planta</h4>
+                      <div class="form-grid form-grid--compact-two">
+                        <q-input
+                          v-model.number="form.brutoPlanta"
+                          type="number"
+                          label="Peso bruto"
+                          suffix="kg"
+                          outlined
+                          dense
+                          class="field-control"
+                        /><q-input
+                          v-model.number="form.taraPlanta"
+                          type="number"
+                          label="Tara"
+                          suffix="kg"
+                          outlined
+                          dense
+                          class="field-control"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                  <div class="form-grid form-grid--two form-grid-spaced">
+                    <q-input
+                      v-model.number="form.avesOrigen"
+                      type="number"
+                      label="Aves informadas por granja"
+                      outlined
+                      dense
+                      class="field-control"
+                    /><q-input
+                      v-model.number="form.avesDte"
+                      type="number"
+                      label="Cantidad aves DTE"
+                      outlined
+                      dense
+                      class="field-control"
+                    />
+                  </div>
+                </section>
+
+                <section class="form-section">
+                  <div class="form-section-heading">
+                    <span>4</span>
+                    <div>
+                      <h3>Cálculos automáticos</h3>
+                      <p>Resultados del ingreso de camión.</p>
+                    </div>
+                  </div>
+                  <div class="calculation-panel">
+                    <div>
+                      <span>Neto origen</span><strong>{{ kg(formMetrics.netoOrigen) }}</strong>
+                    </div>
+                    <div>
+                      <span>Neto planta</span><strong>{{ kg(formMetrics.netoPlanta) }}</strong>
+                    </div>
+                    <div>
+                      <span>Diferencia neta</span
+                      ><strong>{{ kg(formMetrics.diferenciaNeta) }}</strong>
+                    </div>
+                    <div>
+                      <span>Peso promedio</span><strong>{{ avg(formMetrics.promedio) }}</strong>
+                    </div>
+                  </div>
+                </section>
+              </q-step>
+
+              <q-step v-if="form.id" :name="2" title="Datos de línea" icon="factory">
+                <section class="form-section">
+                  <div class="form-section-heading">
+                    <span>1</span>
+                    <div>
+                      <h3>Horario de línea</h3>
+                      <p>Datos informados a balanza por producción.</p>
+                    </div>
+                  </div>
+                  <div class="form-grid form-grid--dialog">
+                    <q-input
+                      v-model="form.fechaEntrada"
+                      label="Fecha inicio"
+                      outlined
+                      dense
+                      readonly
+                      class="field-control"
+                      ><template #append>
+                        <CalendarDays :size="18" />
+                        <q-popup-proxy cover transition-show="scale" transition-hide="scale">
+                          <q-date v-model="form.fechaEntrada" mask="YYYY-MM-DD">
+                            <div class="row items-center justify-end">
+                              <q-btn v-close-popup flat label="OK" color="primary" />
+                            </div>
+                          </q-date>
+                        </q-popup-proxy> </template
+                    ></q-input>
+                    <q-input
+                      v-model="form.inicio"
+                      type="time"
+                      label="Hora inicio"
+                      outlined
+                      dense
+                      class="field-control"
+                    />
+                    <q-input
+                      v-model="form.fechaSalida"
+                      label="Fecha finalizó"
+                      outlined
+                      dense
+                      readonly
+                      class="field-control"
+                      ><template #append>
+                        <CalendarDays :size="18" />
+                        <q-popup-proxy cover transition-show="scale" transition-hide="scale">
+                          <q-date v-model="form.fechaSalida" mask="YYYY-MM-DD">
+                            <div class="row items-center justify-end">
+                              <q-btn v-close-popup flat label="OK" color="primary" />
+                            </div>
+                          </q-date>
+                        </q-popup-proxy> </template
+                    ></q-input>
+                    <q-input
+                      v-model="form.fin"
+                      type="time"
+                      label="Hora finalizó"
+                      outlined
+                      dense
+                      class="field-control"
+                    />
+                  </div>
+                </section>
+
+                <section class="form-section">
+                  <div class="form-section-heading">
+                    <span>2</span>
+                    <div>
+                      <h3>Novedades de producción</h3>
+                      <p>Incidencias y observaciones recibidas.</p>
+                    </div>
+                  </div>
+                  <div class="form-grid form-grid--dialog">
+                    <q-input
+                      v-model.number="form.muertos"
+                      type="number"
+                      label="Muertos"
+                      outlined
+                      dense
+                      class="field-control"
+                    />
+                    <q-input
+                      v-model.number="form.decomisos"
+                      type="number"
+                      label="Decomisos"
+                      outlined
+                      dense
+                      class="field-control"
+                    />
+                    <q-input
+                      v-model.number="form.decomisosVisc"
+                      type="number"
+                      label="Vísceras"
+                      outlined
+                      dense
+                      class="field-control"
+                    />
+                    <q-input
+                      v-model.number="form.vacias"
+                      type="number"
+                      label="Vacías"
+                      outlined
+                      dense
+                      class="field-control"
+                    />
+                    <q-input
+                      v-model="form.note"
+                      label="Nota de línea"
+                      outlined
+                      dense
+                      autogrow
+                      class="field-control field-span-2"
+                    />
+                  </div>
+                </section>
+
+                <section class="form-section">
+                  <div class="form-section-heading">
+                    <span>3</span>
+                    <div>
+                      <h3>Cálculos automáticos</h3>
+                      <p>Resultados de línea e incidencias.</p>
+                    </div>
+                  </div>
+                  <div class="calculation-panel calculation-panel--line">
+                    <div>
+                      <span>Kg muertos</span><strong>{{ kg(formMetrics.kgMuertos) }}</strong>
+                    </div>
+                    <div>
+                      <span>Kg decom.</span><strong>{{ kg(formMetrics.kgDecomisados) }}</strong>
+                    </div>
+                    <div>
+                      <span>% merma</span><strong>{{ pct(formMetrics.porcentajeMerma) }}</strong>
+                    </div>
+                    <div>
+                      <span>% muertos</span
+                      ><strong>{{ pct(formMetrics.porcentajeMuertos) }}</strong>
+                    </div>
+                    <div>
+                      <span>% decom.</span
+                      ><strong>{{ pct(formMetrics.porcentajeDecomisados) }}</strong>
+                    </div>
+                  </div>
+                </section>
+              </q-step>
+            </q-stepper>
           </div>
 
           <footer class="dialog-footer">
             <button class="secondary-action" type="button" @click="closeForm">Cancelar</button>
-            <button class="primary-action" type="submit">
-              <Save :size="19" /> {{ form.id ? 'Guardar cambios' : 'Registrar camion' }}
+            <button
+              v-if="formMode === 'form' && form.id"
+              class="secondary-action"
+              type="button"
+              @click="formMode = 'diagram'"
+            >
+              Volver al diagrama
+            </button>
+            <button
+              v-if="formMode === 'form' && formStep === 2"
+              class="secondary-action"
+              type="button"
+              @click="formStep = 1"
+            >
+              Volver al paso 1
+            </button>
+            <button
+              v-if="formMode === 'form' && formStep === 1 && form.id"
+              class="secondary-action"
+              type="submit"
+              :disabled="!isStep1Complete"
+            >
+              Guardar paso 1
+            </button>
+            <button
+              v-if="formMode === 'form' && formStep === 1 && form.id"
+              class="primary-action"
+              type="button"
+              :disabled="!isStep1Complete"
+              @click="formStep = 2"
+            >
+              Ir al paso 2
+            </button>
+            <button
+              v-else-if="formMode === 'form' && formStep === 1"
+              class="primary-action"
+              type="submit"
+              :disabled="!isStep1Complete"
+            >
+              <Save :size="19" /> Crear camión
+            </button>
+            <button v-else-if="formMode === 'form'" class="primary-action" type="submit">
+              <Save :size="19" /> Guardar datos de línea
             </button>
           </footer>
         </q-form>
@@ -414,7 +635,26 @@
 
 <script setup>
 import { computed, reactive, ref, watch } from 'vue'
-import { CalendarDays, CheckCircle2, ChevronRight, Pencil, Plus, Save, Truck, X } from '@lucide/vue'
+import {
+  calculateNet,
+  calculateTruckMetrics,
+  formatAverageKg,
+  formatKg,
+  formatPercent,
+} from '@/utils/truckCalculations'
+
+import {
+  CalendarDays,
+  CheckCircle2,
+  ChevronRight,
+  ClipboardList,
+  Factory,
+  Pencil,
+  Plus,
+  Save,
+  Truck,
+  X,
+} from '@lucide/vue'
 
 const storageKey = 'mark-frigorifico-operacion-v2'
 
@@ -424,6 +664,8 @@ const formDialog = ref(false)
 const detailDialog = ref(false)
 const detailTruckId = ref(null)
 const feedback = ref('')
+const formMode = ref('form')
+const formStep = ref(1)
 
 const emptyForm = () => ({
   id: null,
@@ -432,14 +674,17 @@ const emptyForm = () => ({
   remito: '',
   chasis: '',
   acoplado: '',
+  comercial: '',
   fechaEntrada: new Date().toISOString().slice(0, 10),
   fechaSalida: new Date().toISOString().slice(0, 10),
+  horarioLlegada: '',
   brutoOrigen: 0,
   taraOrigen: 0,
   brutoPlanta: 0,
   taraPlanta: 0,
   avesOrigen: 0,
   avesDte: 0,
+  vacias: 0,
   inicio: '',
   fin: '',
   muertos: 0,
@@ -453,6 +698,16 @@ const emptyForm = () => ({
 })
 
 const form = reactive(emptyForm())
+const formMetrics = computed(() => calculateTruckMetrics(form))
+
+const isStep1Complete = computed(
+  () =>
+    Boolean(form.client?.trim()) &&
+    Boolean(form.dte?.trim()) &&
+    Boolean(form.chasis?.trim()) &&
+    Number(form.avesOrigen || 0) > 0 &&
+    calcNeto(form.brutoPlanta, form.taraPlanta) > 0,
+)
 
 const columns = [
   { name: 'client', label: 'Cliente', field: 'client', align: 'left', sortable: true },
@@ -488,6 +743,11 @@ function loadTrucks() {
 }
 
 function saveTruck() {
+  if (formStep.value === 1 && !isStep1Complete.value) {
+    showFeedback('Completa el paso 1 antes de guardar')
+    return
+  }
+
   const payload = {
     ...form,
     id: form.id || createId(),
@@ -504,12 +764,14 @@ function saveTruck() {
   selectedTruckId.value = payload.id
   detailTruckId.value = payload.id
   formDialog.value = false
-  showFeedback(form.id ? 'Cambios guardados correctamente' : 'Camion registrado correctamente')
+  showFeedback(form.id ? 'Cambios guardados correctamente' : 'Paso 1 registrado correctamente')
   clearForm()
 }
 
 function newTruck() {
   clearForm()
+  formMode.value = 'form'
+  formStep.value = 1
   formDialog.value = true
 }
 
@@ -519,7 +781,15 @@ function editTruck(truck) {
     fechaSalida: truck.fechaSalida || new Date().toISOString().slice(0, 10),
   })
   detailDialog.value = false
+  formMode.value = 'diagram'
+  formStep.value = 1
   formDialog.value = true
+}
+
+function openFormStep(step) {
+  if (step === 2 && !isStep1Complete.value) return
+  formStep.value = step
+  formMode.value = 'form'
 }
 
 function clearForm() {
@@ -532,22 +802,23 @@ function closeForm() {
 }
 
 function calcNeto(bruto, tara) {
-  return Number(bruto || 0) - Number(tara || 0)
-}
-
-function calcMerma(truck) {
-  return (
-    calcNeto(truck.brutoOrigen, truck.taraOrigen) - calcNeto(truck.brutoPlanta, truck.taraPlanta)
-  )
+  return calculateNet(bruto, tara)
 }
 
 function kg(value) {
-  return `${Math.round(Number(value || 0)).toLocaleString('es-AR')} kg`
+  return formatKg(value)
 }
 
-function avg(neto, aves) {
-  if (!Number(aves)) return '0,000 kg'
-  return `${(Number(neto || 0) / Number(aves)).toLocaleString('es-AR', { minimumFractionDigits: 3, maximumFractionDigits: 3 })} kg`
+function avg(value) {
+  return formatAverageKg(value)
+}
+
+function pct(value) {
+  return formatPercent(value)
+}
+
+function metricsFor(truck) {
+  return calculateTruckMetrics(truck)
 }
 
 function julianLot() {
@@ -558,13 +829,8 @@ function julianLot() {
     .padStart(3, '0')}`
 }
 
-function openTruckDetail(truck) {
-  detailTruckId.value = truck.id
-  detailDialog.value = true
-}
-
 function openTruckAction(truck) {
-  openTruckDetail(truck)
+  editTruck(truck)
 }
 
 function truckDate(truck) {

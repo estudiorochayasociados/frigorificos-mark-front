@@ -5,7 +5,7 @@ const routes = [
     children: [
       { path: '', redirect: '/balanza' },
       { path: 'balanza', component: () => import('@/pages/BalanzaPage.vue') },
-      { path: 'lider', component: () => import('@/pages/LiderPage.vue') },
+      { path: 'zona-2', component: () => import('@/pages/Zona2Page.vue') },
     ],
   },
 
