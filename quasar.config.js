@@ -41,6 +41,8 @@ export default defineConfig((/* ctx */) => {
       // filenameBasedRouting: true,
 
       vueRouterMode: 'hash', // available values: 'hash', 'history'
+      distDir: process.env.QUASAR_DIST_DIR || undefined,
+      allowOutsideProjectDistDir: Boolean(process.env.QUASAR_DIST_DIR),
       // vueRouterBase,
 
       // publicPath: '/',

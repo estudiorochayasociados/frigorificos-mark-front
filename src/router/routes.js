@@ -5,7 +5,9 @@ const routes = [
     children: [
       { path: '', redirect: '/balanza' },
       { path: 'balanza', component: () => import('@/pages/BalanzaPage.vue') },
-      { path: 'zona-2', component: () => import('@/pages/Zona2Page.vue') },
+      { path: 'produccion', component: () => import('@/pages/ProduccionPage.vue') },
+      { path: 'comercial', redirect: '/expedicion?view=pedidos' },
+      { path: 'expedicion', component: () => import('@/pages/Zona3Page.vue') },
     ],
   },
 

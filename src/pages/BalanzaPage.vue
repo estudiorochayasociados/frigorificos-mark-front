@@ -30,7 +30,7 @@
           :columns="columns"
           :pagination="{ rowsPerPage: 0 }"
           hide-pagination
-          class="production-table gt-sm"
+          class="operation-table gt-sm"
           @row-click="(_, row) => openTruckAction(row)"
         >
           <template #body-cell-client="props">
@@ -119,10 +119,10 @@
               <strong>{{ detailTruck.remito || '-' }}</strong>
             </div>
             <div class="detail-sheet-row">
-              <span>Granja comercial</span>
-              <strong>{{ detailTruck.comercial || detailTruck.client || '-' }}</strong>
               <span>Horario llegada</span>
               <strong>{{ detailTruck.horarioLlegada || '--:--' }}</strong>
+              <span>Vacías</span>
+              <strong>{{ detailTruck.vacias || 0 }}</strong>
             </div>
             <div class="detail-sheet-row">
               <span>Neto origen</span>
@@ -156,11 +156,9 @@
               <span>% muertos</span>
               <strong>{{ pct(metricsFor(detailTruck).porcentajeMuertos) }}</strong>
             </div>
-            <div class="detail-sheet-row">
+            <div class="detail-sheet-row detail-sheet-row--single">
               <span>% decom.</span>
               <strong>{{ pct(metricsFor(detailTruck).porcentajeDecomisados) }}</strong>
-              <span>Vacías</span>
-              <strong>{{ detailTruck.vacias || 0 }}</strong>
             </div>
             <div class="detail-sheet-row detail-sheet-row--single">
               <span>Horario</span>
@@ -281,13 +279,6 @@
                     <q-input
                       v-model="form.remito"
                       label="Remito"
-                      outlined
-                      dense
-                      class="field-control"
-                    />
-                    <q-input
-                      v-model="form.comercial"
-                      label="Granja comercial"
                       outlined
                       dense
                       class="field-control"
@@ -533,14 +524,6 @@
                       dense
                       class="field-control"
                     />
-                    <q-input
-                      v-model="form.note"
-                      label="Nota de línea"
-                      outlined
-                      dense
-                      autogrow
-                      class="field-control field-span-2"
-                    />
                   </div>
                 </section>
 
@@ -674,7 +657,6 @@ const emptyForm = () => ({
   remito: '',
   chasis: '',
   acoplado: '',
-  comercial: '',
   fechaEntrada: new Date().toISOString().slice(0, 10),
   fechaSalida: new Date().toISOString().slice(0, 10),
   horarioLlegada: '',
@@ -693,7 +675,6 @@ const emptyForm = () => ({
   codigoSn: 'SN-001',
   loteSenasa: julianLot(),
   date: new Date().toISOString(),
-  note: '',
   sapCreated: false,
 })
 
@@ -705,8 +686,9 @@ const isStep1Complete = computed(
     Boolean(form.client?.trim()) &&
     Boolean(form.dte?.trim()) &&
     Boolean(form.chasis?.trim()) &&
-    Number(form.avesOrigen || 0) > 0 &&
-    calcNeto(form.brutoPlanta, form.taraPlanta) > 0,
+    (Number(form.avesOrigen || 0) > 0 || Number(form.avesDte || 0) > 0) &&
+    (calcNeto(form.brutoOrigen, form.taraOrigen) > 0 ||
+      calcNeto(form.brutoPlanta, form.taraPlanta) > 0),
 )
 
 const columns = [
@@ -750,10 +732,12 @@ function saveTruck() {
 
   const payload = {
     ...form,
+    avesOrigen: Number(form.avesOrigen || form.avesDte || 0),
     id: form.id || createId(),
     date: form.fechaEntrada
       ? new Date(`${form.fechaEntrada}T00:00:00`).toISOString()
       : form.date || new Date().toISOString(),
+    lineConfirmedAt: formStep.value === 2 ? new Date().toISOString() : form.lineConfirmedAt || null,
   }
   delete payload.operator
   const index = trucks.value.findIndex((truck) => truck.id === payload.id)

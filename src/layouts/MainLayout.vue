@@ -46,10 +46,45 @@
             <Scale :size="20" />
             <span>Balanza</span>
           </router-link>
-          <router-link v-if="currentRole === 'zona2'" to="/zona-2" class="nav-item">
-            <Boxes :size="20" />
-            <span>Produccion</span>
-          </router-link>
+          <template v-if="currentRole === 'produccion'">
+            <router-link to="/produccion" class="nav-item">
+              <Factory :size="20" />
+              <span>Producciones</span>
+            </router-link>
+            <router-link to="/produccion?view=historial" class="nav-item">
+              <History :size="20" />
+              <span>Historial</span>
+            </router-link>
+          </template>
+          <template v-if="currentRole === 'expedicion'">
+            <router-link
+              to="/expedicion?view=pedidos"
+              :class="['nav-item', expeditionSectionClass('pedidos')]"
+              active-class="route-match"
+              exact-active-class="route-exact-match"
+            >
+              <ClipboardList :size="20" />
+              <span>Pedidos</span>
+            </router-link>
+            <router-link
+              to="/expedicion"
+              :class="['nav-item', expeditionSectionClass('cargas')]"
+              active-class="route-match"
+              exact-active-class="route-exact-match"
+            >
+              <Truck :size="20" />
+              <span>Cargas</span>
+            </router-link>
+            <router-link
+              to="/expedicion?view=reportes"
+              :class="['nav-item', expeditionSectionClass('reportes')]"
+              active-class="route-match"
+              exact-active-class="route-exact-match"
+            >
+              <ChartNoAxesColumnIncreasing :size="20" />
+              <span>Reportes</span>
+            </router-link>
+          </template>
         </nav>
 
         <div class="sidebar-spacer"></div>
@@ -94,10 +129,45 @@
         <Scale :size="21" />
         <span>Balanza</span>
       </router-link>
-      <router-link v-if="currentRole === 'zona2'" to="/zona-2" class="bottom-nav-item">
-        <Boxes :size="21" />
-        <span>Produccion</span>
-      </router-link>
+      <template v-if="currentRole === 'produccion'">
+        <router-link to="/produccion" class="bottom-nav-item">
+          <Factory :size="21" />
+          <span>Producciones</span>
+        </router-link>
+        <router-link to="/produccion?view=historial" class="bottom-nav-item">
+          <History :size="21" />
+          <span>Historial</span>
+        </router-link>
+      </template>
+      <template v-if="currentRole === 'expedicion'">
+        <router-link
+          to="/expedicion?view=pedidos"
+          :class="['bottom-nav-item', expeditionSectionClass('pedidos')]"
+          active-class="route-match"
+          exact-active-class="route-exact-match"
+        >
+          <ClipboardList :size="21" />
+          <span>Pedidos</span>
+        </router-link>
+        <router-link
+          to="/expedicion"
+          :class="['bottom-nav-item', expeditionSectionClass('cargas')]"
+          active-class="route-match"
+          exact-active-class="route-exact-match"
+        >
+          <Truck :size="21" />
+          <span>Cargas</span>
+        </router-link>
+        <router-link
+          to="/expedicion?view=reportes"
+          :class="['bottom-nav-item', expeditionSectionClass('reportes')]"
+          active-class="route-match"
+          exact-active-class="route-exact-match"
+        >
+          <ChartNoAxesColumnIncreasing :size="21" />
+          <span>Reportes</span>
+        </router-link>
+      </template>
     </q-footer>
   </q-layout>
 </template>
@@ -105,7 +175,18 @@
 <script setup>
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Boxes, ChevronDown, ChevronsUpDown, Scale, UserRound } from '@lucide/vue'
+import {
+  ChartNoAxesColumnIncreasing,
+  ChevronDown,
+  ChevronsUpDown,
+  ClipboardList,
+  Factory,
+  History,
+  Scale,
+  Truck,
+  UserRound,
+  Warehouse,
+} from '@lucide/vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -113,32 +194,50 @@ const router = useRouter()
 const roles = [
   {
     value: 'balanza',
-    label: 'Balanza',
+    label: 'Zona 1',
     caption: 'Camiones y pesos',
     icon: Scale,
+    to: '/balanza',
   },
   {
-    value: 'zona2',
-    label: 'Produccion',
-    caption: 'Produccion y SAP',
-    icon: Boxes,
+    value: 'produccion',
+    label: 'Zona 2',
+    caption: 'Zona 2 y producto terminado',
+    icon: Factory,
+    to: '/produccion',
+  },
+  {
+    value: 'expedicion',
+    label: 'Zona 3',
+    caption: 'Cargas y despachos',
+    icon: Warehouse,
+    to: '/expedicion',
   },
 ]
 
 const currentRole = computed(() => {
-  if (route.path.startsWith('/zona-2')) return 'zona2'
+  if (route.path.startsWith('/produccion')) return 'produccion'
+  if (route.path.startsWith('/expedicion')) return 'expedicion'
   return 'balanza'
 })
 const currentRoleData = computed(() => roles.find((role) => role.value === currentRole.value))
 const currentRoleLabel = computed(() => currentRoleData.value?.label)
 const currentRoleCaption = computed(() => currentRoleData.value?.caption)
 const currentRoleIcon = computed(() => currentRoleData.value?.icon)
-const currentSectionLabel = computed(() =>
-  currentRole.value === 'zona2' ? 'Produccion' : 'Zona 1',
-)
+const currentSectionLabel = computed(() => {
+  if (currentRole.value === 'produccion') return 'Zona 2'
+  if (currentRole.value === 'expedicion') return 'Zona 3'
+  return 'Zona 1'
+})
 
-function setRole(role) {
-  if (role === 'zona2') router.push('/zona-2')
-  else router.push('/balanza')
+function setRole(roleValue) {
+  const role = roles.find((item) => item.value === roleValue)
+  if (role) router.push(role.to)
+}
+
+function expeditionSectionClass(section) {
+  const view = route.query.view
+  const active = section === 'cargas' ? view !== 'pedidos' && view !== 'reportes' : view === section
+  return active ? 'router-link-exact-active' : ''
 }
 </script>
