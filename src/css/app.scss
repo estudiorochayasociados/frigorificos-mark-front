@@ -863,6 +863,70 @@ button {
   line-height: 1.2;
 }
 
+.stock-summary-text {
+  display: inline-block;
+  max-width: 360px;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+.stock-brand-row td {
+  background: #fff;
+  font-weight: 600;
+}
+
+.stock-brand-row {
+  cursor: pointer;
+}
+
+.stock-brand-row .client-cell {
+  gap: 8px;
+}
+
+.stock-expand-action {
+  display: grid;
+  width: 24px;
+  height: 24px;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: #777;
+  cursor: pointer;
+}
+
+.stock-expand-action:hover {
+  background: #f2f2f2;
+  color: #111;
+}
+
+.stock-expand-action svg {
+  transition: transform 160ms ease;
+}
+
+.stock-expand-action svg.open {
+  transform: rotate(90deg);
+}
+
+.stock-product-row td {
+  height: 40px !important;
+  background: #f7f7f7;
+  color: #333;
+  font-size: 12px !important;
+}
+
+.stock-caliber-row td {
+  height: 38px !important;
+  background: #fcfcfc;
+  color: #555;
+  font-size: 11px !important;
+}
+
 .truck-avatar {
   display: grid;
   width: 30px;
@@ -2414,6 +2478,106 @@ button {
   font-size: 10px;
 }
 
+.mass-balance-lines--compact {
+  gap: 8px;
+  padding: 8px 18px 14px;
+}
+
+.mass-balance-trace-table {
+  overflow-x: auto;
+  padding: 0 18px 14px;
+}
+
+.mass-balance-trace-head,
+.mass-balance-trace-row {
+  display: grid;
+  grid-template-columns: 0.9fr 1.15fr 0.9fr repeat(6, minmax(82px, 0.7fr));
+  min-width: 980px;
+}
+
+.mass-balance-trace-head {
+  border-bottom: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.mass-balance-trace-head span,
+.mass-balance-trace-row > * {
+  min-width: 0;
+  padding: 9px 10px;
+  border-right: 1px solid var(--line);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mass-balance-trace-head span:last-child,
+.mass-balance-trace-row > *:last-child {
+  border-right: 0;
+}
+
+.mass-balance-trace-row {
+  border-bottom: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.mass-balance-trace-row:last-child {
+  border-bottom: 0;
+}
+
+.mass-balance-trace-row strong {
+  color: var(--ink);
+}
+
+.mass-balance-line-toggle {
+  display: grid;
+  width: 100%;
+  grid-template-columns: minmax(0, 1fr) auto 18px;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 14px;
+  border: 0;
+  background: #fafafa;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.mass-balance-line-toggle:hover {
+  background: #f5f7f8;
+}
+
+.mass-balance-line-toggle div {
+  display: grid;
+  gap: 3px;
+}
+
+.mass-balance-line-toggle strong {
+  font-size: 13px;
+}
+
+.mass-balance-line-toggle small,
+.mass-balance-line-toggle > span {
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.mass-balance-line-toggle svg {
+  color: var(--muted);
+  transition: transform 160ms ease;
+}
+
+.mass-balance-line--open .mass-balance-line-toggle {
+  border-bottom: 1px solid var(--line);
+}
+
+.mass-balance-line--open .mass-balance-line-toggle svg {
+  transform: rotate(180deg);
+}
+
 .mass-balance-source,
 .mass-balance-line-results {
   display: grid;
@@ -2503,9 +2667,9 @@ button {
 
 .mass-balance-inputs {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px;
-  padding: 18px;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+  padding: 12px 18px;
 }
 
 .mass-balance-results {
@@ -2518,8 +2682,8 @@ button {
 .mass-balance-results article {
   display: grid;
   gap: 5px;
-  min-height: 116px;
-  padding: 15px;
+  min-height: 72px;
+  padding: 11px 13px;
   border: 1px solid var(--line);
   border-radius: 11px;
   background: #fff;
@@ -2533,8 +2697,24 @@ button {
 
 .mass-balance-results strong {
   align-self: center;
-  font-size: 20px;
+  font-size: 16px;
   letter-spacing: -0.035em;
+}
+
+.mass-balance-results--compact {
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0;
+  padding: 0 18px 14px;
+}
+
+.mass-balance-results--compact article {
+  min-height: 62px;
+  padding: 9px 10px;
+}
+
+.mass-balance-results--compact strong {
+  font-size: 14px;
 }
 
 .mass-balance-results article:nth-child(3),

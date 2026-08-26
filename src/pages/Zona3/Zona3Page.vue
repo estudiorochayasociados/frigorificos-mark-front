@@ -75,120 +75,99 @@
         </section>
       </template>
 
-      <template v-else-if="showReports">
+      <template v-else-if="showStock">
         <header class="page-header">
           <div>
-            <span class="eyebrow"><ChartNoAxesColumnIncreasing :size="14" /> ZONA 3</span>
-            <h1>Reportes de expedición</h1>
-            <p>Ejemplo de consulta y exportación de cargas y stock terminado.</p>
+            <h1>Stock del día</h1>
+            <p>Producto terminado recibido desde Zona 2, agrupado por marca comercial.</p>
           </div>
-          <button class="secondary-action" type="button" @click="goToLoads">
-            <ArrowLeft :size="17" /> Volver a cargas
+          <button class="secondary-action" type="button" @click="openWarehouseTransfer">
+            <Warehouse :size="18" /> Movimiento entre almacenes
           </button>
         </header>
 
-        <section class="zone3-metrics">
-          <article>
-            <span>Cargas totales</span><strong>{{ loads.length }}</strong>
-          </article>
-          <article>
-            <span>Despachadas</span><strong>{{ dispatchedLoads.length }}</strong>
-          </article>
-          <article>
-            <span>Cajas cargadas</span><strong>{{ number(reportLoadedBoxes) }}</strong>
-          </article>
-          <article>
-            <span>Stock Zona 2</span><strong>{{ number(totalFinishedStock) }}</strong>
-          </article>
+        <section class="data-card zone3-card">
+          <q-table
+            flat
+            row-key="brand"
+            :rows="dailyStockGroups"
+            :columns="stockColumns"
+            :pagination="{ rowsPerPage: 0 }"
+            hide-pagination
+            class="operation-table"
+          >
+            <template #body="props">
+              <q-tr :props="props" class="stock-brand-row" @click="toggleStockBrand(props.row.brand)">
+                <q-td key="brand" :props="props">
+                  <div class="client-cell">
+                    <button class="stock-expand-action" type="button" @click.stop="toggleStockBrand(props.row.brand)">
+                      <ChevronRight :class="{ open: isStockBrandOpen(props.row.brand) }" :size="16" />
+                    </button>
+                    <span class="document-icon"><PackageCheck :size="18" /></span>
+                    <div>
+                      <strong>{{ props.row.brand }}</strong>
+                    </div>
+                  </div>
+                </q-td>
+                <q-td key="product" :props="props">
+                  <strong>Todos</strong>
+                </q-td>
+                <q-td key="caliber" :props="props">
+                  <strong>Total</strong>
+                </q-td>
+                <q-td key="lot" :props="props">
+                  <span class="stock-summary-text">{{ props.row.lots.join(', ') }}</span>
+                </q-td>
+                <q-td key="boxes" :props="props">
+                  <strong>{{ number(props.row.boxes) }}</strong>
+                </q-td>
+              </q-tr>
+              <template v-for="product in props.row.productGroups" :key="product.name">
+                <q-tr
+                  v-show="isStockBrandOpen(props.row.brand)"
+                  :props="props"
+                  class="stock-product-row"
+                >
+                  <q-td key="brand" :props="props"></q-td>
+                  <q-td key="product" :props="props"><strong>{{ product.name }}</strong></q-td>
+                  <q-td key="caliber" :props="props">Total producto</q-td>
+                  <q-td key="lot" :props="props">{{ product.lots.join(', ') }}</q-td>
+                  <q-td key="boxes" :props="props"><strong>{{ number(product.boxes) }}</strong></q-td>
+                </q-tr>
+                <q-tr
+                  v-for="row in product.rows"
+                  v-show="isStockBrandOpen(props.row.brand)"
+                  :key="row.id"
+                  :props="props"
+                  class="stock-caliber-row"
+                >
+                  <q-td key="brand" :props="props"></q-td>
+                  <q-td key="product" :props="props"></q-td>
+                  <q-td key="caliber" :props="props">Calibre {{ row.caliber }}</q-td>
+                  <q-td key="lot" :props="props">{{ row.lot }}</q-td>
+                  <q-td key="boxes" :props="props">{{ number(row.boxes) }}</q-td>
+                </q-tr>
+              </template>
+            </template>
+          </q-table>
+          <div v-if="dailyStockGroups.length === 0" class="zone3-empty">
+            <PackageCheck :size="36" />
+            <strong>Sin stock producido hoy</strong>
+            <span>Cierra una producción en Zona 2 para generar stock terminado.</span>
+          </div>
         </section>
 
-        <section class="data-card report-card">
+        <section v-if="warehouseTransfers.length" class="data-card zone3-card stock-transfer-history">
           <div class="zone3-toolbar">
             <div>
-              <h2>Resumen de cargas</h2>
-              <p>Una fila por flete con documentos, clientes y cantidades consolidadas.</p>
+              <h2>Movimientos entre almacenes</h2>
+              <p>Registro independiente de las órdenes y cargas de expedición.</p>
             </div>
-            <button class="secondary-action" type="button" @click="exportLoadsReport">
-              <Download :size="17" /> Exportar CSV
-            </button>
           </div>
-          <div class="report-table-wrap">
-            <table class="report-table">
-              <thead>
-                <tr>
-                  <th>Fecha</th>
-                  <th>Carga</th>
-                  <th>Estado</th>
-                  <th>Transporte</th>
-                  <th>Patente</th>
-                  <th>Clientes</th>
-                  <th>Documentos</th>
-                  <th>Cajas</th>
-                  <th>Pallets</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="load in loads" :key="load.id">
-                  <td>{{ shortDate(load.date) }}</td>
-                  <td>{{ load.code }}</td>
-                  <td>{{ loadStatusLabel(load.status) }}</td>
-                  <td>{{ load.transport || '-' }}</td>
-                  <td>{{ load.plate || '-' }}</td>
-                  <td>{{ loadClients(load).join(', ') || '-' }}</td>
-                  <td>{{ load.orderIds.length }}</td>
-                  <td>{{ number(loadLoadedBoxes(load)) }}</td>
-                  <td>{{ number(load.loading?.pallets) }}</td>
-                </tr>
-                <tr v-if="!loads.length">
-                  <td colspan="9">Todavía no hay cargas registradas.</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </section>
-
-        <section class="data-card report-card">
-          <div class="zone3-toolbar">
-            <div>
-              <h2>Stock recibido desde Zona 2</h2>
-              <p>Detalle por marca, calibre y lote disponible para preparación.</p>
-            </div>
-            <button class="secondary-action" type="button" @click="exportStockReport">
-              <Download :size="17" /> Exportar CSV
-            </button>
-          </div>
-          <div class="report-table-wrap">
-            <table class="report-table">
-              <thead>
-                <tr>
-                  <th>Marca</th>
-                  <th>Producto</th>
-                  <th>Calibre</th>
-                  <th>Lote</th>
-                  <th>Fabricación</th>
-                  <th>Vencimiento</th>
-                  <th>Stock</th>
-                  <th>Reservado</th>
-                  <th>Disponible</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="row in stockRows" :key="row.id">
-                  <td>{{ row.brand }}</td>
-                  <td>{{ row.product }}</td>
-                  <td>{{ row.caliber }}</td>
-                  <td>{{ row.lot }}</td>
-                  <td>{{ shortDate(row.manufactureDate) }}</td>
-                  <td>{{ shortDate(row.expirationDate) }}</td>
-                  <td>{{ number(row.boxes) }}</td>
-                  <td>{{ number(reservedForStock(row.id)) }}</td>
-                  <td>{{ number(stockAvailable(row)) }}</td>
-                </tr>
-                <tr v-if="!stockRows.length">
-                  <td colspan="9">Cierra una producción en Zona 2 para generar stock.</td>
-                </tr>
-              </tbody>
-            </table>
+          <div v-for="movement in warehouseTransfers" :key="movement.id" class="stock-transfer-row">
+            <div><strong>{{ movement.stockLabel }}</strong><small>{{ number(movement.quantity) }} cajas</small></div>
+            <span>{{ movement.originWarehouse }} → {{ movement.destinationWarehouse }}</span>
+            <small>{{ dateTime(movement.createdAt) }}</small>
           </div>
         </section>
       </template>
@@ -335,7 +314,7 @@
               <span>01</span>
               <div>
                 <h2>Preparar carga</h2>
-                <p>Asocia cada renglón con un lote, almacén y ubicación.</p>
+                <p>Asocia cada renglón con un lote de stock y la cantidad a reservar.</p>
               </div>
             </div>
           </div>
@@ -372,30 +351,6 @@
                 dense
                 label="Reservar"
                 suffix="cajas"
-              />
-              <q-input
-                v-model="allocationFor(order, line).originWarehouse"
-                outlined
-                dense
-                label="Almacén origen"
-              />
-              <q-input
-                v-model="allocationFor(order, line).originLocation"
-                outlined
-                dense
-                label="Ubicación origen"
-              />
-              <q-input
-                v-model="allocationFor(order, line).destinationWarehouse"
-                outlined
-                dense
-                label="Almacén destino"
-              />
-              <q-input
-                v-model="allocationFor(order, line).destinationLocation"
-                outlined
-                dense
-                label="Ubicación destino"
               />
             </div>
           </article>
@@ -698,6 +653,56 @@
       </section>
     </div>
 
+    <q-dialog v-model="stockTransferDialog">
+      <q-card class="zone3-dialog stock-transfer-dialog">
+        <q-form @submit.prevent="saveWarehouseTransfer">
+          <header class="dialog-header">
+            <div class="dialog-title-wrap">
+              <span class="dialog-icon"><Warehouse :size="20" /></span>
+              <div class="dialog-heading">
+                <h2 class="dialog-title">Movimiento entre almacenes</h2>
+                <span class="dialog-subtitle">Movimiento interno de stock, sin pedido ni expedición.</span>
+              </div>
+            </div>
+            <button class="icon-action" type="button" @click="stockTransferDialog = false">
+              <X :size="20" />
+            </button>
+          </header>
+          <div class="zone3-dialog-body dialog-form-grid">
+            <q-select
+              v-model="stockTransferForm.stockRowId"
+              outlined
+              dense
+              emit-value
+              map-options
+              :options="transferStockOptions"
+              label="Lote de stock"
+              class="field-span-2"
+            />
+            <NonNegativeInput
+              v-model="stockTransferForm.quantity"
+              :minimum="1"
+              type="number"
+              outlined
+              dense
+              label="Cantidad"
+              suffix="cajas"
+            />
+            <q-input v-model="stockTransferForm.originWarehouse" outlined dense label="Almacén origen" />
+            <q-input v-model="stockTransferForm.originLocation" outlined dense label="Ubicación origen" />
+            <q-input v-model="stockTransferForm.destinationWarehouse" outlined dense label="Almacén destino" />
+            <q-input v-model="stockTransferForm.destinationLocation" outlined dense label="Ubicación destino" />
+          </div>
+          <footer class="dialog-footer">
+            <button class="secondary-action" type="button" @click="stockTransferDialog = false">
+              Cancelar
+            </button>
+            <button class="primary-action" type="submit"><Save :size="17" /> Registrar movimiento</button>
+          </footer>
+        </q-form>
+      </q-card>
+    </q-dialog>
+
     <div v-if="feedback.message" :class="['feedback-toast', `feedback-toast--${feedback.type}`]">
       <AlertCircle v-if="feedback.type === 'error'" :size="19" /><CheckCircle2
         v-else
@@ -716,12 +721,10 @@ import {
   AlertCircle,
   ArrowLeft,
   ArrowRight,
-  ChartNoAxesColumnIncreasing,
   CheckCircle2,
   ChevronRight,
   ClipboardList,
   CopyCheck,
-  Download,
   FileText,
   Hash,
   PackageCheck,
@@ -739,6 +742,7 @@ import { createId } from '@/utils/production'
 const ordersKey = 'mark-frigorifico-pedidos-v1'
 const loadsKey = 'mark-frigorifico-cargas-v1'
 const finishedStockKey = 'mark-frigorifico-stock-terminado-v1'
+const warehouseTransfersKey = 'mark-frigorifico-movimientos-almacen-v1'
 const route = useRoute()
 const router = useRouter()
 const today = new Date().toISOString().slice(0, 10)
@@ -749,8 +753,11 @@ const orders = ref(storedOrders.filter((order) => !order.demo))
 const storedLoads = loadArray(loadsKey)
 const loads = ref(removeDemoReferences(storedLoads, demoOrderIds).map(normalizeLoad))
 const finishedStock = ref(loadArray(finishedStockKey))
+const warehouseTransfers = ref(loadArray(warehouseTransfersKey))
 const orderSearch = ref('')
 const loadSearch = ref('')
+const expandedStockBrands = ref(new Set())
+const stockTransferDialog = ref(false)
 const feedback = reactive({ message: '', type: 'success' })
 
 if (demoOrderIds.size) {
@@ -769,14 +776,22 @@ const emptyOrderForm = () => ({
 })
 const orderForm = reactive(emptyOrderForm())
 const loadForm = reactive({ date: today, transport: '', plate: '', dock: '', orderIds: [] })
+const stockTransferForm = reactive(emptyWarehouseTransfer())
 const loadSteps = [
   { number: '1', value: 'preparar', label: 'Preparar' },
   { number: '2', value: 'cargar', label: 'Cargar' },
   { number: '3', value: 'despachar', label: 'Despachar' },
 ]
+const stockColumns = [
+  { name: 'brand', label: 'Marca comercial', field: 'brand', align: 'left' },
+  { name: 'product', label: 'Producto', field: 'product', align: 'left' },
+  { name: 'caliber', label: 'Calibre', field: 'caliber', align: 'left' },
+  { name: 'lot', label: 'Lote', field: 'lot', align: 'left' },
+  { name: 'boxes', label: 'Cajas producidas', field: 'boxes', align: 'left' },
+]
 
 const showOrders = computed(() => route.query.view === 'pedidos')
-const showReports = computed(() => route.query.view === 'reportes')
+const showStock = computed(() => !route.query.view && !route.query.load)
 const showOrderFormPage = computed(() => route.query.action === 'pedido')
 const showLoadFormPage = computed(() => route.query.action === 'carga')
 const activeLoad = computed(() => loads.value.find((load) => load.id === route.query.load))
@@ -839,22 +854,78 @@ const stockRows = computed(() =>
         lot: item.lot,
         manufactureDate: item.manufactureDate,
         expirationDate: item.expirationDate,
+        createdAt: item.createdAt,
         boxes: Number(output.boxes || 0),
       })),
   ),
 )
+const dailyStockRows = computed(() =>
+  stockRows.value.filter((row) => String(row.createdAt || '').slice(0, 10) === today),
+)
+const dailyStockGroups = computed(() => {
+  const groups = new Map()
+  dailyStockRows.value.forEach((row) => {
+    const current = groups.get(row.brand) || {
+      brand: row.brand,
+      boxes: 0,
+      available: 0,
+      products: new Set(),
+      lots: new Set(),
+      rows: [],
+      productRows: new Map(),
+    }
+    current.boxes += row.boxes
+    current.available += stockAvailable(row)
+    current.products.add(row.product)
+    current.lots.add(row.lot)
+    current.rows.push(row)
+    const product = current.productRows.get(row.product) || {
+      name: row.product,
+      boxes: 0,
+      available: 0,
+      lots: new Set(),
+      rows: [],
+    }
+    product.boxes += row.boxes
+    product.available += stockAvailable(row)
+    product.lots.add(row.lot)
+    product.rows.push(row)
+    current.productRows.set(row.product, product)
+    groups.set(row.brand, current)
+  })
+  return [...groups.values()].map((group) => ({
+    ...group,
+    products: [...group.products],
+    lots: [...group.lots],
+    rows: group.rows.sort((left, right) =>
+      `${left.product}${left.caliber}${left.lot}`.localeCompare(
+        `${right.product}${right.caliber}${right.lot}`,
+        'es',
+      ),
+    ),
+    productGroups: [...group.productRows.values()].map((product) => ({
+      ...product,
+      lots: [...product.lots],
+      rows: product.rows.sort((left, right) =>
+        `${left.caliber}${left.lot}`.localeCompare(`${right.caliber}${right.lot}`, 'es'),
+      ),
+    })),
+  }))
+})
 const stockOptions = computed(() =>
   stockRows.value.map((row) => ({
     label: `${row.brand} · ${row.caliber} · Lote ${row.lot} · ${number(stockAvailable(row, activeLoad.value?.id))} disp.`,
     value: row.id,
   })),
 )
-const totalFinishedStock = computed(() => stockRows.value.reduce((sum, row) => sum + row.boxes, 0))
+const transferStockOptions = computed(() =>
+  stockRows.value.map((row) => ({
+    label: `${row.brand} · ${row.caliber} · Lote ${row.lot} · ${number(stockAvailable(row))} disp.`,
+    value: row.id,
+  })),
+)
 const totalAvailableStock = computed(() =>
   stockRows.value.reduce((sum, row) => sum + stockAvailable(row), 0),
-)
-const reportLoadedBoxes = computed(() =>
-  loads.value.reduce((sum, load) => sum + loadLoadedBoxes(load), 0),
 )
 const activeOrders = computed(() =>
   activeLoad.value
@@ -876,6 +947,9 @@ const activeAllocationRows = computed(() =>
 
 watch(orders, (value) => localStorage.setItem(ordersKey, JSON.stringify(value)), { deep: true })
 watch(loads, (value) => localStorage.setItem(loadsKey, JSON.stringify(value)), { deep: true })
+watch(warehouseTransfers, (value) => localStorage.setItem(warehouseTransfersKey, JSON.stringify(value)), {
+  deep: true,
+})
 watch(
   () => route.query.action,
   (action) => {
@@ -896,6 +970,16 @@ function loadArray(key) {
 }
 function emptyOrderLine() {
   return { id: createId(), article: '', description: '', caliber: '5', quantity: 1 }
+}
+function emptyWarehouseTransfer() {
+  return {
+    stockRowId: '',
+    quantity: 0,
+    originWarehouse: '',
+    originLocation: '',
+    destinationWarehouse: '',
+    destinationLocation: '',
+  }
 }
 function lineLabel(line) {
   return (
@@ -963,8 +1047,48 @@ function orderStatusClass(order) {
     orderStatusKey(order)
   ]
 }
+function isStockBrandOpen(brand) {
+  return expandedStockBrands.value.has(brand)
+}
+function toggleStockBrand(brand) {
+  const next = new Set(expandedStockBrands.value)
+  if (next.has(brand)) next.delete(brand)
+  else next.add(brand)
+  expandedStockBrands.value = next
+}
+function openWarehouseTransfer() {
+  Object.assign(stockTransferForm, emptyWarehouseTransfer())
+  stockTransferDialog.value = true
+}
+function saveWarehouseTransfer() {
+  const stockRow = stockRows.value.find((row) => row.id === stockTransferForm.stockRowId)
+  const quantity = Number(stockTransferForm.quantity || 0)
+  if (
+    !stockRow ||
+    quantity <= 0 ||
+    !stockTransferForm.originWarehouse.trim() ||
+    !stockTransferForm.destinationWarehouse.trim()
+  )
+    return showFeedback('Completa lote, almacén origen, almacén destino y cantidad', 'error')
+  if (quantity > stockAvailable(stockRow))
+    return showFeedback('La cantidad supera el stock disponible del lote', 'error')
+
+  warehouseTransfers.value.unshift({
+    id: createId(),
+    stockRowId: stockRow.id,
+    stockLabel: stockLabel(stockRow.id),
+    quantity,
+    originWarehouse: stockTransferForm.originWarehouse.trim(),
+    originLocation: stockTransferForm.originLocation.trim(),
+    destinationWarehouse: stockTransferForm.destinationWarehouse.trim(),
+    destinationLocation: stockTransferForm.destinationLocation.trim(),
+    createdAt: new Date().toISOString(),
+  })
+  stockTransferDialog.value = false
+  showFeedback('Movimiento entre almacenes registrado')
+}
 function openLoadDialog() {
-  router.push({ path: '/expedicion', query: { action: 'carga' } })
+  router.push({ path: '/expedicion', query: { view: 'cargas', action: 'carga' } })
 }
 function createLoad() {
   if (!loadForm.orderIds.length) return showFeedback('Selecciona al menos un pedido', 'error')
@@ -984,10 +1108,6 @@ function createLoad() {
           stockRowId: '',
           planned: Number(line.quantity || 0),
           loaded: 0,
-          originWarehouse: '',
-          originLocation: '',
-          destinationWarehouse: '',
-          destinationLocation: '',
         }
       }),
   )
@@ -995,10 +1115,10 @@ function createLoad() {
   openLoad(load)
 }
 function openLoad(load) {
-  router.push({ path: '/expedicion', query: { load: load.id, step: nextStep(load) } })
+  router.push({ path: '/expedicion', query: { view: 'cargas', load: load.id, step: nextStep(load) } })
 }
 function goToLoads() {
-  router.push('/expedicion')
+  router.push({ path: '/expedicion', query: { view: 'cargas' } })
 }
 function goToOrders() {
   router.push({ path: '/expedicion', query: { view: 'pedidos' } })
@@ -1041,10 +1161,6 @@ function allocationFor(order, line) {
       stockRowId: '',
       planned: Number(line.quantity || 0),
       loaded: 0,
-      originWarehouse: '',
-      originLocation: '',
-      destinationWarehouse: '',
-      destinationLocation: '',
     }
   return activeLoad.value.allocations[key]
 }
@@ -1074,12 +1190,10 @@ function confirmPreparation() {
     rows.some(
       ({ allocation }) =>
         !allocation.stockRowId ||
-        !allocation.originWarehouse ||
-        !allocation.destinationWarehouse ||
         Number(allocation.planned || 0) <= 0,
     )
   )
-    return showFeedback('Asocia lote, almacenes y cantidad en todos los renglones', 'error')
+    return showFeedback('Asocia lote y cantidad en todos los renglones', 'error')
   const requestedByStock = rows.reduce(
     (totals, { allocation }) => ({
       ...totals,
@@ -1165,80 +1279,7 @@ function loadStepDone(step) {
   return activeLoad.value?.status === 'dispatched'
 }
 function goToLoadStep(step) {
-  router.push({ path: '/expedicion', query: { load: activeLoad.value.id, step } })
-}
-function exportLoadsReport() {
-  const rows = [
-    [
-      'Fecha',
-      'Carga',
-      'Estado',
-      'Transporte',
-      'Patente',
-      'Dock',
-      'Clientes',
-      'Documentos',
-      'Cajas cargadas',
-      'Pallets',
-      'Remitos',
-    ],
-    ...loads.value.map((load) => [
-      load.date,
-      load.code,
-      loadStatusLabel(load.status),
-      load.transport,
-      load.plate,
-      load.dock,
-      loadClients(load).join(' | '),
-      load.orderIds.length,
-      loadLoadedBoxes(load),
-      load.loading.pallets,
-      load.orderIds
-        .map((id) => load.dispatch?.[id]?.remito || '')
-        .filter(Boolean)
-        .join(' | '),
-    ]),
-  ]
-  downloadCsv('reporte-cargas-zona-3.csv', rows)
-}
-function exportStockReport() {
-  const rows = [
-    [
-      'Marca',
-      'Producto',
-      'Calibre',
-      'Lote',
-      'Fabricación',
-      'Vencimiento',
-      'Stock',
-      'Reservado',
-      'Disponible',
-    ],
-    ...stockRows.value.map((row) => [
-      row.brand,
-      row.product,
-      row.caliber,
-      row.lot,
-      row.manufactureDate,
-      row.expirationDate,
-      row.boxes,
-      reservedForStock(row.id),
-      stockAvailable(row),
-    ]),
-  ]
-  downloadCsv('reporte-stock-zona-3.csv', rows)
-}
-function downloadCsv(filename, rows) {
-  const csv = `\uFEFF${rows.map((row) => row.map((value) => `"${String(value ?? '').replaceAll('"', '""')}"`).join(';')).join('\r\n')}`
-  const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }))
-  const link = document.createElement('a')
-  link.href = url
-  link.download = filename
-  document.body.appendChild(link)
-  link.click()
-  link.remove()
-  window.setTimeout(() => URL.revokeObjectURL(url), 0)
-  showFeedback('Archivo CSV generado')
+  router.push({ path: '/expedicion', query: { view: 'cargas', load: activeLoad.value.id, step } })
 }
 function number(value) {
   return Math.max(0, Number(value || 0)).toLocaleString('es-AR')
@@ -1569,7 +1610,7 @@ function showFeedback(message, type = 'success') {
 }
 .allocation-row {
   display: grid;
-  grid-template-columns: 1.25fr 1.35fr 0.7fr repeat(4, 0.85fr);
+  grid-template-columns: 1.25fr 1.35fr 0.7fr;
   gap: 10px;
   align-items: start;
   padding: 14px 16px;
@@ -1713,6 +1754,30 @@ function showFeedback(message, type = 'success') {
   padding: 20px;
   overflow-y: auto;
 }
+.stock-transfer-dialog {
+  width: min(650px, 96vw);
+}
+.stock-transfer-history {
+  margin-top: 18px;
+}
+.stock-transfer-row {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr auto;
+  gap: 14px;
+  align-items: center;
+  padding: 12px 22px;
+  border-top: 1px solid var(--line);
+  font-size: 12px;
+}
+.stock-transfer-row div {
+  display: grid;
+  gap: 2px;
+}
+.stock-transfer-row small,
+.stock-transfer-row > span {
+  color: var(--muted);
+  font-size: 11px;
+}
 .dialog-form-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -1785,6 +1850,12 @@ function showFeedback(message, type = 'success') {
   }
   .order-row {
     grid-template-columns: 1.3fr 1.2fr 0.8fr auto;
+  }
+  .stock-transfer-row {
+    grid-template-columns: 1fr auto;
+  }
+  .stock-transfer-row > span {
+    grid-column: 1 / -1;
   }
   .order-row > div:nth-child(3) {
     display: none;
