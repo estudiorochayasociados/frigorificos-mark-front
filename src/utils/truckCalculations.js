@@ -21,8 +21,6 @@ export function calculateTruckMetrics(truck) {
   const aves = numberValue(truck?.avesOrigen)
   const muertos = numberValue(truck?.muertos)
   const decomisos = numberValue(truck?.decomisos)
-  const decomisosVisc = numberValue(truck?.decomisosVisc)
-  const decomisosTotales = decomisos + decomisosVisc
   const promedio = safeDivide(netoOrigen, aves)
 
   return {
@@ -31,10 +29,10 @@ export function calculateTruckMetrics(truck) {
     diferenciaNeta,
     promedio,
     kgMuertos: promedio * muertos,
-    kgDecomisados: promedio * decomisosTotales,
+    kgDecomisados: promedio * decomisos,
     porcentajeMerma: safeDivide(diferenciaNeta, netoOrigen),
     porcentajeMuertos: safeDivide(muertos, aves),
-    porcentajeDecomisados: safeDivide(decomisosTotales, aves),
+    porcentajeDecomisados: safeDivide(decomisos, aves),
   }
 }
 

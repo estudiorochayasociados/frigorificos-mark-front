@@ -1,15 +1,24 @@
 <template>
   <q-layout view="lHh Lpr lFf" class="app-layout">
-    <q-header class="mobile-header lt-md">
+    <q-header class="app-header">
       <q-toolbar>
-        <img class="mobile-logo" src="/images/logo.png" alt="Mark" />
-        <q-toolbar-title class="mobile-title">{{ currentSectionLabel }}</q-toolbar-title>
-        <button class="role-pill" type="button">
-          <UserRound :size="16" />
-          {{ currentRoleLabel }}
-          <ChevronDown :size="14" />
+        <button
+          v-if="!isBalanzaRoute"
+          class="header-menu-button"
+          type="button"
+          @click="drawerOpen = !drawerOpen"
+        >
+          <Menu :size="21" />
+        </button>
+        <button class="profile-switcher profile-switcher--header" type="button">
+          <span class="profile-avatar"><component :is="currentRoleIcon" :size="19" /></span>
+          <span class="profile-copy">
+            <strong>{{ currentRoleLabel }}</strong>
+            <small>{{ currentRoleCaption }}</small>
+          </span>
+          <ChevronsUpDown :size="18" />
           <q-menu auto-close class="role-menu">
-            <q-list padding style="min-width: 220px">
+            <q-list padding style="min-width: 232px">
               <q-item
                 v-for="role in roles"
                 :key="role.value"
@@ -30,14 +39,17 @@
       </q-toolbar>
     </q-header>
 
-    <q-drawer show-if-above :model-value="true" :width="264" class="app-sidebar" breakpoint="1024">
+    <q-drawer
+      v-if="!isBalanzaRoute"
+      v-model="drawerOpen"
+      show-if-above
+      :width="264"
+      class="app-sidebar"
+      breakpoint="1024"
+    >
       <div class="sidebar-content">
         <div class="brand-block">
           <img class="brand-logo" src="/images/logo.png" alt="Mark" />
-          <div>
-            <div class="brand-name">MARK</div>
-            <div class="brand-caption">Gestion frigorifica</div>
-          </div>
         </div>
 
         <nav class="sidebar-nav">
@@ -47,13 +59,32 @@
             <span>Balanza</span>
           </router-link>
           <template v-if="currentRole === 'produccion'">
-            <router-link to="/produccion" class="nav-item">
+            <router-link
+              to="/produccion"
+              :class="['nav-item', productionSectionClass('producciones')]"
+              active-class="route-match"
+              exact-active-class="route-exact-match"
+            >
               <Factory :size="20" />
               <span>Producciones</span>
             </router-link>
-            <router-link to="/produccion?view=historial" class="nav-item">
+            <router-link
+              to="/produccion?view=historial"
+              :class="['nav-item', productionSectionClass('historial')]"
+              active-class="route-match"
+              exact-active-class="route-exact-match"
+            >
               <History :size="20" />
               <span>Historial</span>
+            </router-link>
+            <router-link
+              to="/produccion?view=balance"
+              :class="['nav-item', productionSectionClass('balance')]"
+              active-class="route-match"
+              exact-active-class="route-exact-match"
+            >
+              <Calculator :size="20" />
+              <span>Balance de masa</span>
             </router-link>
           </template>
           <template v-if="currentRole === 'expedicion'">
@@ -86,36 +117,10 @@
             </router-link>
           </template>
         </nav>
-
         <div class="sidebar-spacer"></div>
-
-        <div class="profile-label">PERFIL DE DEMO</div>
-        <button class="profile-switcher" type="button">
-          <span class="profile-avatar"><component :is="currentRoleIcon" :size="19" /></span>
-          <span class="profile-copy">
-            <strong>{{ currentRoleLabel }}</strong>
-            <small>{{ currentRoleCaption }}</small>
-          </span>
-          <ChevronsUpDown :size="18" />
-          <q-menu anchor="top left" self="bottom left" class="role-menu">
-            <q-list padding style="min-width: 232px">
-              <q-item
-                v-for="role in roles"
-                :key="role.value"
-                clickable
-                v-close-popup
-                :active="currentRole === role.value"
-                active-class="role-menu-active"
-                @click="setRole(role.value)"
-              >
-                <q-item-section avatar><component :is="role.icon" :size="20" /></q-item-section>
-                <q-item-section>
-                  <q-item-label>{{ role.label }}</q-item-label>
-                  <q-item-label caption>{{ role.caption }}</q-item-label>
-                </q-item-section>
-              </q-item>
-            </q-list>
-          </q-menu>
+        <button class="logout-action" type="button" @click="logout">
+          <LogOut :size="18" />
+          <span>Cerrar sesión</span>
         </button>
       </div>
     </q-drawer>
@@ -130,13 +135,32 @@
         <span>Balanza</span>
       </router-link>
       <template v-if="currentRole === 'produccion'">
-        <router-link to="/produccion" class="bottom-nav-item">
+        <router-link
+          to="/produccion"
+          :class="['bottom-nav-item', productionSectionClass('producciones')]"
+          active-class="route-match"
+          exact-active-class="route-exact-match"
+        >
           <Factory :size="21" />
           <span>Producciones</span>
         </router-link>
-        <router-link to="/produccion?view=historial" class="bottom-nav-item">
+        <router-link
+          to="/produccion?view=historial"
+          :class="['bottom-nav-item', productionSectionClass('historial')]"
+          active-class="route-match"
+          exact-active-class="route-exact-match"
+        >
           <History :size="21" />
           <span>Historial</span>
+        </router-link>
+        <router-link
+          to="/produccion?view=balance"
+          :class="['bottom-nav-item', productionSectionClass('balance')]"
+          active-class="route-match"
+          exact-active-class="route-exact-match"
+        >
+          <Calculator :size="21" />
+          <span>Balance</span>
         </router-link>
       </template>
       <template v-if="currentRole === 'expedicion'">
@@ -173,23 +197,26 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
   ChartNoAxesColumnIncreasing,
-  ChevronDown,
+  Calculator,
   ChevronsUpDown,
   ClipboardList,
   Factory,
   History,
+  LogOut,
+  Menu,
   Scale,
   Truck,
-  UserRound,
   Warehouse,
 } from '@lucide/vue'
 
 const route = useRoute()
 const router = useRouter()
+const authTokenKey = 'mark-auth-token'
+const drawerOpen = ref(true)
 
 const roles = [
   {
@@ -202,7 +229,7 @@ const roles = [
   {
     value: 'produccion',
     label: 'Zona 2',
-    caption: 'Zona 2 y producto terminado',
+    caption: 'Producto terminado',
     icon: Factory,
     to: '/produccion',
   },
@@ -224,20 +251,28 @@ const currentRoleData = computed(() => roles.find((role) => role.value === curre
 const currentRoleLabel = computed(() => currentRoleData.value?.label)
 const currentRoleCaption = computed(() => currentRoleData.value?.caption)
 const currentRoleIcon = computed(() => currentRoleData.value?.icon)
-const currentSectionLabel = computed(() => {
-  if (currentRole.value === 'produccion') return 'Zona 2'
-  if (currentRole.value === 'expedicion') return 'Zona 3'
-  return 'Zona 1'
-})
-
+const isBalanzaRoute = computed(() => route.path.startsWith('/balanza'))
 function setRole(roleValue) {
   const role = roles.find((item) => item.value === roleValue)
   if (role) router.push(role.to)
 }
 
+function logout() {
+  localStorage.removeItem(authTokenKey)
+  router.replace('/')
+}
+
 function expeditionSectionClass(section) {
   const view = route.query.view
   const active = section === 'cargas' ? view !== 'pedidos' && view !== 'reportes' : view === section
+  return active ? 'router-link-exact-active' : ''
+}
+
+function productionSectionClass(section) {
+  const active =
+    section === 'producciones'
+      ? route.query.view !== 'historial' && route.query.view !== 'balance'
+      : route.query.view === section
   return active ? 'router-link-exact-active' : ''
 }
 </script>

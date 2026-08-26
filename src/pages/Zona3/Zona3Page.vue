@@ -1,6 +1,6 @@
 <template>
   <q-page class="page-shell">
-    <div class="page-content zone3-page">
+    <div v-if="!showOrderFormPage && !showLoadFormPage" class="page-content zone3-page">
       <template v-if="showOrders">
         <header class="page-header">
           <div>
@@ -365,10 +365,9 @@
                 :options="stockOptions"
                 label="Lote de Zona 2"
               />
-              <q-input
-                v-model.number="allocationFor(order, line).planned"
+              <NonNegativeInput
+                v-model="allocationFor(order, line).planned"
                 type="number"
-                min="0"
                 outlined
                 dense
                 label="Reservar"
@@ -443,10 +442,9 @@
               dense
               label="Fin de carga"
             />
-            <q-input
-              v-model.number="activeLoad.loading.pallets"
+            <NonNegativeInput
+              v-model="activeLoad.loading.pallets"
               type="number"
-              min="0"
               outlined
               dense
               label="Pallets"
@@ -473,10 +471,9 @@
                 ><span>{{ stockLabel(item.allocation.stockRowId) }}</span>
               </div>
               <strong>{{ number(item.allocation.planned) }}</strong>
-              <q-input
-                v-model.number="item.allocation.loaded"
+              <NonNegativeInput
+                v-model="item.allocation.loaded"
                 type="number"
-                min="0"
                 outlined
                 dense
                 suffix="cajas"
@@ -570,8 +567,8 @@
       </template>
     </div>
 
-    <q-dialog v-model="orderDialog" :maximized="$q.screen.lt.sm" persistent>
-      <q-card class="zone3-dialog">
+    <div v-else-if="showOrderFormPage" class="page-content page-content--form zone3-page">
+      <section class="zone3-dialog page-panel">
         <q-form @submit.prevent="saveOrder">
           <header class="dialog-header">
             <div class="dialog-title-wrap">
@@ -581,7 +578,7 @@
                 <span class="dialog-subtitle">Referencia documental para Expedición</span>
               </div>
             </div>
-            <button class="icon-action" type="button" @click="orderDialog = false">
+            <button class="icon-action" type="button" @click="goToOrders">
               <X :size="20" />
             </button>
           </header>
@@ -624,10 +621,10 @@
                 dense
                 label="Calibre"
               />
-              <q-input
-                v-model.number="line.quantity"
+              <NonNegativeInput
+                v-model="line.quantity"
+                :minimum="1"
                 type="number"
-                min="1"
                 outlined
                 dense
                 label="Cantidad"
@@ -644,18 +641,17 @@
             </div>
           </div>
           <footer class="dialog-footer">
-            <button class="secondary-action" type="button" @click="orderDialog = false">
-              Cancelar</button
+            <button class="secondary-action" type="button" @click="goToOrders">Cancelar</button
             ><button class="primary-action" type="submit">
               <Save :size="17" /> Guardar pedido
             </button>
           </footer>
         </q-form>
-      </q-card>
-    </q-dialog>
+      </section>
+    </div>
 
-    <q-dialog v-model="loadDialog" :maximized="$q.screen.lt.sm" persistent>
-      <q-card class="zone3-dialog load-dialog">
+    <div v-else-if="showLoadFormPage" class="page-content page-content--form zone3-page">
+      <section class="zone3-dialog load-dialog page-panel">
         <q-form @submit.prevent="createLoad">
           <header class="dialog-header">
             <div class="dialog-title-wrap">
@@ -665,7 +661,7 @@
                 <span class="dialog-subtitle">Agrupa documentos en un mismo flete</span>
               </div>
             </div>
-            <button class="icon-action" type="button" @click="loadDialog = false">
+            <button class="icon-action" type="button" @click="goToLoads">
               <X :size="20" />
             </button>
           </header>
@@ -695,13 +691,12 @@
             </div>
           </div>
           <footer class="dialog-footer">
-            <button class="secondary-action" type="button" @click="loadDialog = false">
-              Cancelar</button
+            <button class="secondary-action" type="button" @click="goToLoads">Cancelar</button
             ><button class="primary-action" type="submit"><Truck :size="17" /> Crear carga</button>
           </footer>
         </q-form>
-      </q-card>
-    </q-dialog>
+      </section>
+    </div>
 
     <div v-if="feedback.message" :class="['feedback-toast', `feedback-toast--${feedback.type}`]">
       <AlertCircle v-if="feedback.type === 'error'" :size="19" /><CheckCircle2
@@ -716,6 +711,7 @@
 import { computed, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import DateInput from '@/components/DateInput.vue'
+import NonNegativeInput from '@/components/NonNegativeInput.vue'
 import {
   AlertCircle,
   ArrowLeft,
@@ -755,8 +751,6 @@ const loads = ref(removeDemoReferences(storedLoads, demoOrderIds).map(normalizeL
 const finishedStock = ref(loadArray(finishedStockKey))
 const orderSearch = ref('')
 const loadSearch = ref('')
-const orderDialog = ref(false)
-const loadDialog = ref(false)
 const feedback = reactive({ message: '', type: 'success' })
 
 if (demoOrderIds.size) {
@@ -783,6 +777,8 @@ const loadSteps = [
 
 const showOrders = computed(() => route.query.view === 'pedidos')
 const showReports = computed(() => route.query.view === 'reportes')
+const showOrderFormPage = computed(() => route.query.action === 'pedido')
+const showLoadFormPage = computed(() => route.query.action === 'carga')
 const activeLoad = computed(() => loads.value.find((load) => load.id === route.query.load))
 const currentLoadStep = computed(() => {
   const requested = route.query.step
@@ -880,6 +876,15 @@ const activeAllocationRows = computed(() =>
 
 watch(orders, (value) => localStorage.setItem(ordersKey, JSON.stringify(value)), { deep: true })
 watch(loads, (value) => localStorage.setItem(loadsKey, JSON.stringify(value)), { deep: true })
+watch(
+  () => route.query.action,
+  (action) => {
+    if (action === 'pedido') Object.assign(orderForm, emptyOrderForm())
+    if (action === 'carga')
+      Object.assign(loadForm, { date: today, transport: '', plate: '', dock: '', orderIds: [] })
+  },
+  { immediate: true },
+)
 
 function loadArray(key) {
   try {
@@ -924,8 +929,7 @@ function removeDemoReferences(savedLoads, demoIds) {
     .filter((load) => load.orderIds.length)
 }
 function openOrderDialog() {
-  Object.assign(orderForm, emptyOrderForm())
-  orderDialog.value = true
+  router.push({ path: '/expedicion', query: { view: 'pedidos', action: 'pedido' } })
 }
 function addOrderLine() {
   orderForm.lines.push(emptyOrderLine())
@@ -939,8 +943,8 @@ function saveOrder() {
   if (orderForm.lines.some((line) => Number(line.quantity || 0) <= 0))
     return showFeedback('Informa una cantidad válida en cada renglón', 'error')
   orders.value.unshift({ ...clone(orderForm), id: createId(), createdAt: new Date().toISOString() })
-  orderDialog.value = false
   showFeedback('Pedido disponible para Expedición')
+  goToOrders()
 }
 function orderBoxes(order) {
   return (order.lines || []).reduce((sum, line) => sum + Math.max(0, Number(line.quantity || 0)), 0)
@@ -960,8 +964,7 @@ function orderStatusClass(order) {
   ]
 }
 function openLoadDialog() {
-  Object.assign(loadForm, { date: today, transport: '', plate: '', dock: '', orderIds: [] })
-  loadDialog.value = true
+  router.push({ path: '/expedicion', query: { action: 'carga' } })
 }
 function createLoad() {
   if (!loadForm.orderIds.length) return showFeedback('Selecciona al menos un pedido', 'error')
@@ -989,7 +992,6 @@ function createLoad() {
       }),
   )
   loads.value.push(load)
-  loadDialog.value = false
   openLoad(load)
 }
 function openLoad(load) {
@@ -997,6 +999,9 @@ function openLoad(load) {
 }
 function goToLoads() {
   router.push('/expedicion')
+}
+function goToOrders() {
+  router.push({ path: '/expedicion', query: { view: 'pedidos' } })
 }
 function nextStep(load) {
   if (load.status === 'dispatched' || load.status === 'loaded') return 'despachar'

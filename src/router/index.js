@@ -8,6 +8,8 @@ import {
 
 import routes from './routes.js'
 
+const authTokenKey = 'mark-auth-token'
+
 /*
  * If not building with SSR mode, you can
  * directly export the Router instantiation;
@@ -32,6 +34,13 @@ export default defineRouter((/* { store, ssrContext } */) => {
     // quasar.conf.js -> build -> vueRouterMode
     // quasar.conf.js -> build -> publicPath
     history: createHistory(import.meta.env.QUASAR_VUE_ROUTER_BASE),
+  })
+
+  Router.beforeEach((to) => {
+    const hasToken = Boolean(localStorage.getItem(authTokenKey))
+
+    if (to.meta.requiresAuth && !hasToken) return '/'
+    if (to.meta.guestOnly && hasToken) return '/balanza'
   })
 
   return Router

@@ -1,13 +1,29 @@
 const routes = [
   {
     path: '/',
+    component: () => import('@/pages/LoginPage.vue'),
+    meta: { guestOnly: true },
+  },
+  {
+    path: '/',
     component: () => import('@/layouts/MainLayout.vue'),
+    meta: { requiresAuth: true },
     children: [
-      { path: '', redirect: '/balanza' },
-      { path: 'balanza', component: () => import('@/pages/BalanzaPage.vue') },
-      { path: 'produccion', component: () => import('@/pages/ProduccionPage.vue') },
+      { path: 'balanza', component: () => import('@/pages/Zona1/BalanzaPage.vue') },
+      { path: 'balanza/form1', component: () => import('@/pages/Zona1/BalanzaForm1.vue') },
+      {
+        path: 'balanza/form1/:id',
+        name: 'balanza-form1',
+        component: () => import('@/pages/Zona1/BalanzaForm1.vue'),
+      },
+      {
+        path: 'balanza/form2/:id',
+        name: 'balanza-form2',
+        component: () => import('@/pages/Zona1/BalanzaForm2.vue'),
+      },
+      { path: 'produccion', component: () => import('@/pages/Zona2/ProduccionPage.vue') },
       { path: 'comercial', redirect: '/expedicion?view=pedidos' },
-      { path: 'expedicion', component: () => import('@/pages/Zona3Page.vue') },
+      { path: 'expedicion', component: () => import('@/pages/Zona3/Zona3Page.vue') },
     ],
   },
 

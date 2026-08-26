@@ -1,7 +1,267 @@
 <template>
   <q-page class="page-shell">
-    <div class="page-content production-page">
-      <template v-if="showHistory">
+    <div
+      v-if="showHistoryDetailPage && historyDetail"
+      class="page-content production-page page-content--narrow"
+    >
+      <section class="production-history-dialog page-panel">
+        <header class="dialog-header">
+          <div class="dialog-title-wrap">
+            <span class="dialog-icon"><History :size="20" /></span>
+            <div class="dialog-heading">
+              <h2 class="dialog-title">{{ historyDetail.brand }}</h2>
+              <span class="dialog-subtitle">Producción {{ shortDate(historyDetail.date) }}</span>
+            </div>
+          </div>
+          <button class="icon-action" type="button" @click="goToHistory">
+            <X :size="20" />
+          </button>
+        </header>
+        <div class="history-detail-body">
+          <div class="history-detail-metrics">
+            <div>
+              <span>Entrada</span><strong>{{ number(historyTotals.birds) }} aves</strong>
+            </div>
+            <div>
+              <span>Consumo</span><strong>{{ number(historyConsumption) }} aves</strong>
+            </div>
+            <div>
+              <span>Terminado</span
+              ><strong>{{ number(totalBoxes(historyDetail.outputs)) }} cajas</strong>
+            </div>
+          </div>
+          <section>
+            <h3>Camiones y DTE</h3>
+            <div class="history-trucks">
+              <div v-for="truck in historyTrucks" :key="truck.id">
+                <strong>{{ truck.chasis || '-' }}</strong
+                ><span>DTE {{ truck.dte || '-' }}</span
+                ><span>{{ number(historyDetail.consumption?.[truck.id]) }} aves consumidas</span>
+              </div>
+            </div>
+          </section>
+          <section>
+            <h3>Calibres producidos</h3>
+            <div class="history-outputs">
+              <div v-for="output in historyDetail.outputs" :key="output.caliber">
+                <span>{{ output.caliber }}</span
+                ><strong>{{ number(output.boxes) }} cajas</strong>
+              </div>
+            </div>
+          </section>
+          <section>
+            <h3>Lote terminado</h3>
+            <div class="history-lot">
+              <strong>{{ historyDetail.finished?.lot || '-' }}</strong>
+              <span
+                >Fabricación {{ shortDate(historyDetail.finished?.manufactureDate) }} · Vencimiento
+                {{ shortDate(historyDetail.finished?.expirationDate) }}</span
+              >
+            </div>
+          </section>
+          <section>
+            <h3>Movimientos</h3>
+            <div class="audit-timeline">
+              <div v-for="event in [...(historyDetail.events || [])].reverse()" :key="event.id">
+                <span></span>
+                <div>
+                  <strong>{{ event.label }}</strong
+                  ><small>{{ event.actor }} · {{ dateTime(event.at) }}</small>
+                </div>
+              </div>
+            </div>
+          </section>
+        </div>
+      </section>
+    </div>
+
+    <div v-else class="page-content production-page">
+      <template v-if="showMassBalance">
+        <header class="page-header">
+          <div>
+            <span class="eyebrow"><Calculator :size="14" /> ZONA 2</span>
+            <h1>Balance de masa</h1>
+            <p>
+              Balance diario generado desde Balanza y Producción, con detalle por lote de entrada.
+            </p>
+          </div>
+          <div class="production-header-actions">
+            <DateInput v-model="selectedDate" label="Fecha" />
+            <button
+              v-if="!selectedMassBalance"
+              class="primary-action"
+              type="button"
+              :disabled="balanceSourceTrucks.length === 0"
+              @click="createMassBalance"
+            >
+              Crear balance del día
+            </button>
+            <button v-else class="secondary-action" type="button" @click="deleteMassBalance">
+              Eliminar balance
+            </button>
+          </div>
+        </header>
+
+        <section v-if="selectedMassBalance" class="mass-balance-summary">
+          <article>
+            <span>Lotes de entrada</span><strong>{{ balanceLines.length }}</strong>
+          </article>
+          <article>
+            <span>Aves consumidas</span><strong>{{ number(balanceTotals.birdsToProcess) }}</strong>
+          </article>
+          <article>
+            <span>Kg de entrada</span><strong>{{ decimal(balanceTotals.inputKg) }} kg</strong>
+          </article>
+          <article>
+            <span>Salida por balance</span
+            ><strong>{{ decimal(balanceTotals.balanceOutputKg) }} kg</strong>
+          </article>
+          <article :class="{ 'mass-balance-difference': balanceTotals.differenceKg !== 0 }">
+            <span>Diferencia</span
+            ><strong>{{ signedDecimal(balanceTotals.differenceKg) }} kg</strong>
+          </article>
+        </section>
+
+        <section v-if="selectedMassBalance" class="mass-balance-card data-card">
+          <div class="data-card-header">
+            <div>
+              <h2>Lotes de entrada</h2>
+              <p>
+                Zona 1 aporta el DTE, lote, camión y novedades. Zona 2 aporta el consumo confirmado.
+              </p>
+            </div>
+          </div>
+          <div class="mass-balance-lines">
+            <article
+              v-for="line in balanceLines"
+              :key="line.record.truckId"
+              class="mass-balance-line"
+            >
+              <header>
+                <div>
+                  <strong>{{ line.source.loteSenasa || 'Sin lote' }}</strong
+                  ><small
+                    >DTE {{ line.source.dte || '-' }} ·
+                    {{ line.source.chasis || 'Sin patente' }}</small
+                  >
+                </div>
+                <span>{{ line.source.client || '-' }}</span>
+              </header>
+              <div class="mass-balance-source">
+                <div>
+                  <span>Aves DTE</span
+                  ><strong>{{ number(line.source.avesOrigen || line.source.avesDte) }}</strong>
+                </div>
+                <div>
+                  <span>Muertos</span><strong>{{ number(line.source.muertos) }}</strong>
+                </div>
+                <div>
+                  <span>Decomisos</span><strong>{{ number(line.source.decomisos) }}</strong>
+                </div>
+                <div>
+                  <span>Consumo Zona 2</span><strong>{{ number(line.birdsToProcess) }}</strong>
+                </div>
+              </div>
+              <div class="mass-balance-inputs">
+                <NonNegativeInput
+                  v-model="line.record.averageWeight"
+                  outlined
+                  dense
+                  label="Peso promedio"
+                  suffix="kg"
+                />
+                <NonNegativeInput
+                  v-model="line.record.yieldPercent"
+                  outlined
+                  dense
+                  label="Rinde"
+                  suffix="%"
+                />
+                <NonNegativeInput
+                  v-model="line.record.absorptionPercent"
+                  outlined
+                  dense
+                  label="Absorción"
+                  suffix="%"
+                />
+                <NonNegativeInput
+                  v-model="line.record.visceraPercent"
+                  outlined
+                  dense
+                  label="Vísceras"
+                  suffix="%"
+                />
+                <NonNegativeInput
+                  v-model="line.record.featherPercent"
+                  outlined
+                  dense
+                  label="Plumas"
+                  suffix="%"
+                />
+              </div>
+              <div class="mass-balance-line-results">
+                <span
+                  >Entrada <strong>{{ decimal(line.metrics.inputKg) }} kg</strong></span
+                >
+                <span
+                  >Subproductos <strong>{{ decimal(line.metrics.byproductsKg) }} kg</strong></span
+                >
+                <span
+                  >Decomiso <strong>{{ decimal(line.metrics.confiscationKg) }} kg</strong></span
+                >
+                <span
+                  >Salida rinde <strong>{{ decimal(line.metrics.yieldOutputKg) }} kg</strong></span
+                >
+                <span
+                  >Salida balance
+                  <strong>{{ decimal(line.metrics.balanceOutputKg) }} kg</strong></span
+                >
+                <span :class="{ warning: line.metrics.differenceKg !== 0 }"
+                  >Diferencia
+                  <strong>{{ signedDecimal(line.metrics.differenceKg) }} kg</strong></span
+                >
+              </div>
+            </article>
+          </div>
+        </section>
+
+        <section v-if="selectedMassBalance" class="mass-balance-card data-card">
+          <div class="data-card-header">
+            <div>
+              <h2>Producto terminado de Zona 2</h2>
+              <p>
+                Se muestra como registro del día; la maqueta todavía no distribuye esas cajas entre
+                lotes de entrada.
+              </p>
+            </div>
+          </div>
+          <div v-if="dailyFinishedLots.length" class="mass-balance-finished">
+            <div v-for="production in dailyFinishedLots" :key="production.id">
+              <strong>{{ production.finished?.lot || 'Sin lote' }}</strong
+              ><span>{{ production.brand }} · {{ production.product }}</span
+              ><span>{{ number(totalBoxes(production.outputs)) }} cajas</span>
+            </div>
+          </div>
+          <div v-else class="production-empty">
+            <PackageCheck :size="30" /><strong>Sin lotes terminados registrados</strong
+            ><span>Se completarán al cerrar la producción en Zona 2.</span>
+          </div>
+        </section>
+
+        <section v-else class="data-card mass-balance-empty">
+          <Calculator :size="36" />
+          <strong>No hay balance creado para esta fecha</strong>
+          <span v-if="balanceSourceTrucks.length"
+            >Se generará con {{ balanceSourceTrucks.length }} lote{{
+              balanceSourceTrucks.length === 1 ? '' : 's'
+            }}
+            de entrada de Zona 1.</span
+          >
+          <span v-else>No hay ingresos de Balanza finalizados para generar el balance.</span>
+        </section>
+      </template>
+
+      <template v-else-if="showHistory">
         <header class="page-header">
           <div>
             <span class="eyebrow"><History :size="14" /> ZONA 2</span>
@@ -167,6 +427,9 @@
                 </div>
                 <span>{{ truck.loteSenasa || '-' }}</span>
               </header>
+              <div class="truck-use-order">
+                <span>Orden de producción</span><strong>{{ truckUseOrder(truck.id) }}</strong>
+              </div>
               <dl>
                 <div>
                   <dt>Aves</dt>
@@ -237,14 +500,7 @@
               <div>
                 <span class="caliber-dot"></span><strong>{{ output.caliber }}</strong>
               </div>
-              <q-input
-                v-model.number="output.boxes"
-                type="number"
-                min="0"
-                outlined
-                dense
-                suffix="cajas"
-              />
+              <NonNegativeInput v-model="output.boxes" outlined dense suffix="cajas" />
             </div>
             <div class="output-table-total">
               <span>Total cajas</span
@@ -268,9 +524,7 @@
               <span>03</span>
               <div>
                 <h2>Consumo de materia prima</h2>
-                <p>
-                  Propuesta automática FIFO por horario de llegada, editable antes de confirmar.
-                </p>
+                <p>Propuesta automática según el orden de uso indicado para cada camión.</p>
               </div>
             </div>
           </div>
@@ -278,10 +532,9 @@
           <div class="consumption-meter">
             <label
               ><span>Aves necesarias</span
-              ><q-input
-                v-model.number="activeProduction.requiredBirds"
-                type="number"
-                min="1"
+              ><NonNegativeInput
+                v-model="activeProduction.requiredBirds"
+                :minimum="1"
                 outlined
                 dense
                 @change="applyFifo"
@@ -306,10 +559,11 @@
               <div class="consumption-available">
                 <span>Disponible</span><strong>{{ number(availableForTruck(truck)) }}</strong>
               </div>
-              <q-input
-                v-model.number="activeProduction.consumption[truck.id]"
-                type="number"
-                min="0"
+              <div class="consumption-order">
+                <span>Orden</span><strong>{{ truckUseOrder(truck.id) }}</strong>
+              </div>
+              <NonNegativeInput
+                v-model="activeProduction.consumption[truck.id]"
                 :max="availableForTruck(truck)"
                 outlined
                 dense
@@ -428,78 +682,6 @@
       </template>
     </div>
 
-    <q-dialog v-model="historyDialog" :maximized="$q.screen.lt.sm">
-      <q-card v-if="historyDetail" class="production-history-dialog">
-        <header class="dialog-header">
-          <div class="dialog-title-wrap">
-            <span class="dialog-icon"><History :size="20" /></span>
-            <div class="dialog-heading">
-              <h2 class="dialog-title">{{ historyDetail.brand }}</h2>
-              <span class="dialog-subtitle">Producción {{ shortDate(historyDetail.date) }}</span>
-            </div>
-          </div>
-          <button class="icon-action" type="button" @click="historyDialog = false">
-            <X :size="20" />
-          </button>
-        </header>
-        <div class="history-detail-body">
-          <div class="history-detail-metrics">
-            <div>
-              <span>Entrada</span><strong>{{ number(historyTotals.birds) }} aves</strong>
-            </div>
-            <div>
-              <span>Consumo</span><strong>{{ number(historyConsumption) }} aves</strong>
-            </div>
-            <div>
-              <span>Terminado</span
-              ><strong>{{ number(totalBoxes(historyDetail.outputs)) }} cajas</strong>
-            </div>
-          </div>
-          <section>
-            <h3>Camiones y DTE</h3>
-            <div class="history-trucks">
-              <div v-for="truck in historyTrucks" :key="truck.id">
-                <strong>{{ truck.chasis || '-' }}</strong
-                ><span>DTE {{ truck.dte || '-' }}</span
-                ><span>{{ number(historyDetail.consumption?.[truck.id]) }} aves consumidas</span>
-              </div>
-            </div>
-          </section>
-          <section>
-            <h3>Calibres producidos</h3>
-            <div class="history-outputs">
-              <div v-for="output in historyDetail.outputs" :key="output.caliber">
-                <span>{{ output.caliber }}</span
-                ><strong>{{ number(output.boxes) }} cajas</strong>
-              </div>
-            </div>
-          </section>
-          <section>
-            <h3>Lote terminado</h3>
-            <div class="history-lot">
-              <strong>{{ historyDetail.finished?.lot || '-' }}</strong
-              ><span
-                >Fabricación {{ shortDate(historyDetail.finished?.manufactureDate) }} · Vencimiento
-                {{ shortDate(historyDetail.finished?.expirationDate) }}</span
-              >
-            </div>
-          </section>
-          <section>
-            <h3>Movimientos</h3>
-            <div class="audit-timeline">
-              <div v-for="event in [...(historyDetail.events || [])].reverse()" :key="event.id">
-                <span></span>
-                <div>
-                  <strong>{{ event.label }}</strong
-                  ><small>{{ event.actor }} · {{ dateTime(event.at) }}</small>
-                </div>
-              </div>
-            </div>
-          </section>
-        </div>
-      </q-card>
-    </q-dialog>
-
     <div v-if="feedback.message" :class="['feedback-toast', `feedback-toast--${feedback.type}`]">
       <AlertCircle v-if="feedback.type === 'error'" :size="19" />
       <CheckCircle2 v-else :size="19" />
@@ -512,10 +694,12 @@
 import { computed, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import DateInput from '@/components/DateInput.vue'
+import NonNegativeInput from '@/components/NonNegativeInput.vue'
 import {
   AlertCircle,
   ArrowLeft,
   ArrowRight,
+  Calculator,
   CheckCircle2,
   ChevronRight,
   Factory,
@@ -533,6 +717,7 @@ import {
   consumedByTruck,
   createId,
   groupTrucksByBrand,
+  productionDateForTruck,
   productionStatusLabel,
   proposeFifoConsumption,
   totalOutputBoxes,
@@ -543,17 +728,17 @@ import {
 const trucksKey = 'mark-frigorifico-operacion-v2'
 const productionKey = 'mark-frigorifico-produccion-v2'
 const finishedStockKey = 'mark-frigorifico-stock-terminado-v1'
+const massBalanceKey = 'mark-frigorifico-balance-masa-v1'
 const actor = 'Operador Producción'
 const route = useRoute()
 const router = useRouter()
 const today = new Date().toISOString().slice(0, 10)
 const trucks = ref(loadArray(trucksKey))
 const productions = ref(loadArray(productionKey).map(normalizeProduction))
+const massBalances = ref(loadArray(massBalanceKey).map(normalizeMassBalance))
 const selectedDate = ref(typeof route.query.date === 'string' ? route.query.date : today)
 const historySearch = ref('')
 const historyStatus = ref('all')
-const historyDialog = ref(false)
-const historyDetailId = ref(null)
 const feedback = reactive({ message: '', type: 'success' })
 
 const productOptions = ['Pollo entero']
@@ -571,8 +756,14 @@ const flowSteps = [
 ]
 
 const showHistory = computed(() => route.query.view === 'historial')
+const showMassBalance = computed(() => route.query.view === 'balance')
+const showHistoryDetailPage = computed(
+  () => showHistory.value && typeof route.query.id === 'string',
+)
 const activeProduction = computed(() =>
-  productions.value.find((production) => production.id === route.query.id),
+  showHistory.value
+    ? undefined
+    : productions.value.find((production) => production.id === route.query.id),
 )
 const currentStep = computed(() => {
   const requested = route.query.step
@@ -585,6 +776,7 @@ const activeTrucks = computed(() => {
   return activeProduction.value.truckIds
     .map((id) => truckDataFor(activeProduction.value, id))
     .filter(Boolean)
+    .sort((left, right) => truckUseOrder(left.id) - truckUseOrder(right.id))
 })
 const priorConsumption = computed(() =>
   consumedByTruck(productions.value, activeProduction.value?.id),
@@ -622,7 +814,7 @@ const filteredHistory = computed(() => {
     )
 })
 const historyDetail = computed(() =>
-  productions.value.find((production) => production.id === historyDetailId.value),
+  productions.value.find((production) => production.id === route.query.id),
 )
 const historyTrucks = computed(
   () =>
@@ -637,8 +829,53 @@ const historyConsumption = computed(() =>
     0,
   ),
 )
+const balanceSourceTrucks = computed(() =>
+  trucks.value
+    .filter(
+      (truck) =>
+        productionDateForTruck(truck) === selectedDate.value &&
+        Boolean(truck.lineConfirmedAt || truck.fin),
+    )
+    .sort((left, right) => Number(left.productionOrder || 0) - Number(right.productionOrder || 0)),
+)
+const selectedMassBalance = computed(() =>
+  massBalances.value.find((balance) => balance.date === selectedDate.value),
+)
+const confirmedConsumption = computed(() => consumedByTruck(productions.value))
+const balanceLines = computed(() =>
+  (selectedMassBalance.value?.lines || []).map((line) => {
+    const source = trucks.value.find((truck) => truck.id === line.truckId) || line.source
+    const birdsToProcess = Number(confirmedConsumption.value[line.truckId] || 0)
+    return {
+      record: line,
+      source,
+      birdsToProcess,
+      metrics: calculateBalanceLine({ ...line, birdsToProcess, decomisos: source?.decomisos }),
+    }
+  }),
+)
+const balanceTotals = computed(() =>
+  balanceLines.value.reduce(
+    (totals, line) => {
+      totals.birdsToProcess += line.birdsToProcess
+      totals.inputKg += line.metrics.inputKg
+      totals.balanceOutputKg += line.metrics.balanceOutputKg
+      totals.differenceKg += line.metrics.differenceKg
+      return totals
+    },
+    { birdsToProcess: 0, inputKg: 0, balanceOutputKg: 0, differenceKg: 0 },
+  ),
+)
+const dailyFinishedLots = computed(() =>
+  productions.value.filter(
+    (production) => production.date === selectedDate.value && production.status === 'completed',
+  ),
+)
 
 watch(productions, (value) => localStorage.setItem(productionKey, JSON.stringify(value)), {
+  deep: true,
+})
+watch(massBalances, (value) => localStorage.setItem(massBalanceKey, JSON.stringify(value)), {
   deep: true,
 })
 watch(
@@ -646,6 +883,7 @@ watch(
   (date) =>
     !activeProduction.value &&
     !showHistory.value &&
+    !showMassBalance.value &&
     router.replace({ path: '/produccion', query: date === today ? {} : { date } }),
 )
 watch(
@@ -665,6 +903,14 @@ function normalizeProduction(production) {
         production.outputs?.find((item) => item.caliber === caliber) || { caliber, boxes: 0 },
     ),
     consumption: production.consumption || {},
+    truckOrder:
+      production.truckOrder ||
+      Object.fromEntries(
+        (production.truckIds || []).map((id, index) => [
+          id,
+          Number(production.truckSnapshots?.[id]?.productionOrder) || index + 1,
+        ]),
+      ),
     events: production.events || [],
     truckSnapshots: production.truckSnapshots || {},
     finished:
@@ -678,6 +924,77 @@ function loadArray(key) {
     return Array.isArray(parsed) ? parsed : []
   } catch {
     return []
+  }
+}
+
+function normalizeMassBalance(balance) {
+  return {
+    ...balance,
+    lines: (balance.lines || []).map((line) => ({
+      ...line,
+      source: line.source || {},
+      averageWeight: nonNegative(line.averageWeight),
+      yieldPercent: nonNegative(line.yieldPercent),
+      absorptionPercent: nonNegative(line.absorptionPercent || 8),
+      visceraPercent: nonNegative(line.visceraPercent || 15),
+      featherPercent: nonNegative(line.featherPercent || 8),
+    })),
+  }
+}
+
+function createMassBalance() {
+  if (selectedMassBalance.value) return
+  if (balanceSourceTrucks.value.length === 0)
+    return showFeedback('No hay lotes de entrada disponibles para esta fecha', 'error')
+
+  massBalances.value.push(
+    normalizeMassBalance({
+      id: createId(),
+      date: selectedDate.value,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      lines: balanceSourceTrucks.value.map((truck) => ({
+        truckId: truck.id,
+        source: { ...truck },
+        averageWeight: 0,
+        yieldPercent: 0,
+        absorptionPercent: 8,
+        visceraPercent: 15,
+        featherPercent: 8,
+      })),
+    }),
+  )
+  showFeedback('Balance diario creado con los lotes de Balanza')
+}
+
+function deleteMassBalance() {
+  const index = massBalances.value.findIndex((balance) => balance.date === selectedDate.value)
+  if (index < 0) return
+  massBalances.value.splice(index, 1)
+  showFeedback('Balance diario eliminado')
+}
+
+function calculateBalanceLine(line) {
+  const birdsToProcess = nonNegative(line.birdsToProcess)
+  const averageWeight = nonNegative(line.averageWeight)
+  const inputKg = birdsToProcess * averageWeight
+  const absorptionKg = inputKg * (nonNegative(line.absorptionPercent) / 100)
+  const visceraKg = inputKg * (nonNegative(line.visceraPercent) / 100)
+  const featherKg = inputKg * (nonNegative(line.featherPercent) / 100)
+  const byproductsKg = visceraKg + featherKg
+  const confiscationKg = averageWeight * nonNegative(line.decomisos)
+  const yieldOutputKg = inputKg * (nonNegative(line.yieldPercent) / 100)
+  const balanceOutputKg = inputKg + absorptionKg - byproductsKg - confiscationKg
+  return {
+    inputKg,
+    absorptionKg,
+    visceraKg,
+    featherKg,
+    byproductsKg,
+    confiscationKg,
+    yieldOutputKg,
+    balanceOutputKg,
+    differenceKg: balanceOutputKg - yieldOutputKg,
   }
 }
 
@@ -706,6 +1023,12 @@ function openProduction(group) {
       date: selectedDate.value,
       brand: group.brand,
       truckIds: productionTrucks.map((truck) => truck.id),
+      truckOrder: Object.fromEntries(
+        productionTrucks.map((truck, index) => [
+          truck.id,
+          Number(truck.productionOrder) || index + 1,
+        ]),
+      ),
       truckSnapshots: Object.fromEntries(productionTrucks.map((truck) => [truck.id, { ...truck }])),
       status: 'in_process',
       requiredBirds: 0,
@@ -720,6 +1043,8 @@ function openProduction(group) {
     production.truckIds.push(...addedTrucks.map((truck) => truck.id))
     addedTrucks.forEach((truck) => {
       production.truckSnapshots[truck.id] = { ...truck }
+      production.truckOrder[truck.id] =
+        Number(truck.productionOrder) || Object.keys(production.truckOrder).length + 1
     })
   }
   goToStep(nextStepFor(production), production.id)
@@ -787,6 +1112,7 @@ function applyFifo(notify = true) {
     activeTrucks.value,
     production.requiredBirds,
     priorConsumption.value,
+    production.truckOrder,
   )
   if (notify) showFeedback('Consumo FIFO recalculado')
 }
@@ -907,9 +1233,12 @@ function goToDashboard() {
   })
 }
 
+function goToHistory() {
+  router.push({ path: '/produccion', query: { view: 'historial' } })
+}
+
 function openHistoryDetail(production) {
-  historyDetailId.value = production.id
-  historyDialog.value = true
+  router.push({ path: '/produccion', query: { view: 'historial', id: production.id } })
 }
 
 function truckDataFor(production, truckId) {
@@ -935,7 +1264,11 @@ function groupAvailable(group) {
 function availableForTruck(truck) {
   return Math.max(0, truckAvailableBirds(truck) - Number(priorConsumption.value[truck.id] || 0))
 }
-
+function truckUseOrder(truckId) {
+  const order = Number(activeProduction.value?.truckOrder?.[truckId] || 0)
+  if (Number.isInteger(order) && order > 0) return order
+  return (activeProduction.value?.truckIds.indexOf(truckId) ?? 0) + 1
+}
 function totalsFor(list) {
   return list.reduce(
     (totals, truck) => {
@@ -953,7 +1286,7 @@ function birdsFor(truck) {
   return truckBirds(truck)
 }
 function confiscationsFor(truck) {
-  return Math.max(0, Number(truck.decomisos || 0)) + Math.max(0, Number(truck.decomisosVisc || 0))
+  return Math.max(0, Number(truck.decomisos || 0))
 }
 function totalBoxes(outputs) {
   return totalOutputBoxes(outputs)
@@ -980,7 +1313,23 @@ function initials(value) {
     .toUpperCase()
 }
 function number(value) {
-  return Math.max(0, Number(value || 0)).toLocaleString('es-AR')
+  return nonNegative(value).toLocaleString('es-AR')
+}
+function decimal(value) {
+  return nonNegative(value).toLocaleString('es-AR', {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 3,
+  })
+}
+function signedDecimal(value) {
+  const numeric = Number(value || 0)
+  return `${numeric > 0 ? '+' : ''}${numeric.toLocaleString('es-AR', {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 3,
+  })}`
+}
+function nonNegative(value) {
+  return Math.max(0, Number(value || 0))
 }
 function signedNumber(value) {
   const numeric = Number(value || 0)

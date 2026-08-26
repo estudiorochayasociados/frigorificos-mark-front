@@ -3,7 +3,7 @@
 
 import { defineConfig } from '#q-app'
 
-export default defineConfig((/* ctx */) => {
+export default defineConfig(( ctx ) => {
   return {
     // https://v2.quasar.dev/quasar-cli-vite/prefetch-feature
     // preFetch: true,
@@ -32,15 +32,14 @@ export default defineConfig((/* ctx */) => {
 
     // https://v2.quasar.dev/quasar-cli-vite/quasar-config-file#build
     build: {
+      vueRouterMode: ctx.mode.capacitor ? 'hash' : 'history',
+      publicPath: '/',
+      versionName: Date.now().toString(),
       target: {
-        // browser: 'baseline-widely-available',
-        // node: 'node22'
+        browser: ['es2022', 'firefox115', 'chrome115', 'safari14'],
+        node: 'node20',
       },
 
-      // https://v2.quasar.dev/quasar-cli-vite/page-routing-with-vue-router#filename-based-routing
-      // filenameBasedRouting: true,
-
-      vueRouterMode: 'hash', // available values: 'hash', 'history'
       distDir: process.env.QUASAR_DIST_DIR || undefined,
       allowOutsideProjectDistDir: Boolean(process.env.QUASAR_DIST_DIR),
       // vueRouterBase,
@@ -81,7 +80,7 @@ export default defineConfig((/* ctx */) => {
       config: {},
 
       // iconSet: 'material-icons', // Quasar icon set
-      // lang: 'en-US', // Quasar language pack
+      lang: 'es', // Quasar language pack
 
       // For special cases outside of where the auto-import strategy can have an impact
       // (like functional components as one of the examples),
@@ -91,7 +90,7 @@ export default defineConfig((/* ctx */) => {
       // directives: [],
 
       // Quasar plugins
-      plugins: [],
+      plugins: ["Notify", "Dialog", "Loading"],
     },
 
     // animations: 'all', // --- includes all animations

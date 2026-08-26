@@ -5,11 +5,7 @@ export function truckBirds(truck) {
 }
 
 export function truckLosses(truck) {
-  return (
-    Math.max(0, Number(truck?.muertos || 0)) +
-    Math.max(0, Number(truck?.decomisos || 0)) +
-    Math.max(0, Number(truck?.decomisosVisc || 0))
-  )
+  return Math.max(0, Number(truck?.muertos || 0)) + Math.max(0, Number(truck?.decomisos || 0))
 }
 
 export function truckAvailableBirds(truck) {
@@ -36,7 +32,21 @@ export function groupTrucksByBrand(trucks, date) {
       current.push(truck)
       groups.set(truck.client, current)
     })
-  return [...groups.entries()].map(([brand, brandTrucks]) => ({ brand, trucks: brandTrucks }))
+  return [...groups.entries()].map(([brand, brandTrucks]) => ({
+    brand,
+    trucks: brandTrucks.sort(compareProductionOrder),
+  }))
+}
+
+function compareProductionOrder(left, right) {
+  const leftOrder = Number(left.productionOrder || 0)
+  const rightOrder = Number(right.productionOrder || 0)
+  if (leftOrder > 0 && rightOrder > 0 && leftOrder !== rightOrder) return leftOrder - rightOrder
+  if (leftOrder > 0 && rightOrder <= 0) return -1
+  if (rightOrder > 0 && leftOrder <= 0) return 1
+  const leftDate = `${productionDateForTruck(left)} ${left.horarioLlegada || '99:99'}`
+  const rightDate = `${productionDateForTruck(right)} ${right.horarioLlegada || '99:99'}`
+  return leftDate.localeCompare(rightDate)
 }
 
 export function consumedByTruck(productions, excludedProductionId = null) {
@@ -49,11 +59,21 @@ export function consumedByTruck(productions, excludedProductionId = null) {
   }, {})
 }
 
-export function proposeFifoConsumption(trucks, requiredBirds, alreadyConsumed = {}) {
+export function proposeFifoConsumption(
+  trucks,
+  requiredBirds,
+  alreadyConsumed = {},
+  truckOrder = {},
+) {
   let remaining = Math.max(0, Number(requiredBirds || 0))
   const result = {}
   ;[...trucks.entries()]
     .sort(([leftIndex, left], [rightIndex, right]) => {
+      const leftOrder = Number(truckOrder[left.id] || 0)
+      const rightOrder = Number(truckOrder[right.id] || 0)
+      if (leftOrder > 0 && rightOrder > 0 && leftOrder !== rightOrder) return leftOrder - rightOrder
+      if (leftOrder > 0 && rightOrder <= 0) return -1
+      if (rightOrder > 0 && leftOrder <= 0) return 1
       const leftDate = `${productionDateForTruck(left)} ${left.horarioLlegada || '99:99'}`
       const rightDate = `${productionDateForTruck(right)} ${right.horarioLlegada || '99:99'}`
       return leftDate.localeCompare(rightDate) || rightIndex - leftIndex
