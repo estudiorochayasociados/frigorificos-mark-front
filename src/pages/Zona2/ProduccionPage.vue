@@ -344,16 +344,23 @@
                   <div class="client-cell">
                     <span class="truck-avatar"><Truck :size="19" /></span>
                     <div>
-                      <strong>{{ props.row.brand }}</strong
-                      ><small>Marca comercial</small>
+                      <strong>{{ props.row.brand }}</strong>
                     </div>
                   </div>
                 </q-td>
-                <q-td key="blackTrucks" :props="props">
-                  {{ number(blackTruckCount(props.row)) }}
+                <q-td key="trucks" :props="props">
+                  <div class="production-truck-counts">
+                    <strong>{{ number(props.row.trucks.length) }} total</strong>
+                    <small
+                      >{{ number(whiteTruckCount(props.row)) }} blancos ·
+                      {{ number(blackTruckCount(props.row)) }} negros</small
+                    >
+                  </div>
                 </q-td>
-                <q-td key="whiteTrucks" :props="props">
-                  {{ number(whiteTruckCount(props.row)) }}
+                <q-td key="processStatus" :props="props">
+                  <span :class="['status-pill', processStatusClass(props.row)]">
+                    {{ processStatusLabel(props.row) }}
+                  </span>
                 </q-td>
               </q-tr>
             </template>
@@ -426,9 +433,9 @@ const historyStatusOptions = [
   { label: 'Finalizada', value: 'completed' },
 ]
 const productionColumns = [
-  { name: 'brand', label: 'Marca comercial', field: 'brand', align: 'left' },
-  { name: 'blackTrucks', label: 'Camiones negros', field: (row) => blackTruckCount(row), align: 'left' },
-  { name: 'whiteTrucks', label: 'Camiones blancos', field: (row) => whiteTruckCount(row), align: 'left' },
+  { name: 'brand', label: 'Marca', field: 'brand', align: 'left' },
+  { name: 'trucks', label: 'Camiones', field: (row) => row.trucks.length, align: 'left' },
+  { name: 'processStatus', label: 'Estado', field: (row) => processStatusLabel(row), align: 'left' },
 ]
 
 const showHistory = computed(() => false)
@@ -785,6 +792,23 @@ function statusClass(production) {
       : production.status === 'draft'
         ? 'status-neutral'
         : 'status-active'
+}
+function processStatusLabel(group) {
+  const production = productionFor(group)
+  if (production?.status === 'completed') return 'Finalizada'
+  const step = production ? nextStepFor(production) : 'ingreso'
+  return {
+    ingreso: 'Ingreso',
+    carga: 'Producción',
+    consumo: 'Consumo',
+    cierre: 'Cierre',
+  }[step]
+}
+function processStatusClass(group) {
+  const production = productionFor(group)
+  if (production?.status === 'completed') return 'status-success'
+  const step = production ? nextStepFor(production) : 'ingreso'
+  return step === 'ingreso' ? 'status-warning' : step === 'cierre' ? 'status-success' : 'status-active'
 }
 function initials(value) {
   return String(value || '')

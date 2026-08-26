@@ -23,10 +23,6 @@ const routes = [
       },
       { path: 'produccion', component: () => import('@/pages/Zona2/ProduccionPage.vue') },
       {
-        path: 'produccion/historial',
-        component: () => import('@/pages/Zona2/ProduccionHistorialPage.vue'),
-      },
-      {
         path: 'produccion/balance',
         component: () => import('@/pages/Zona2/BalanceMasaPage.vue'),
       },
