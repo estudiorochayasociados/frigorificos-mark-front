@@ -431,9 +431,11 @@ const productionColumns = [
   { name: 'whiteTrucks', label: 'Camiones blancos', field: (row) => whiteTruckCount(row), align: 'left' },
 ]
 
-const showHistory = computed(() => false)
+const showHistory = computed(() => true)
 const showMassBalance = computed(() => false)
-const showHistoryDetailPage = computed(() => false)
+const showHistoryDetailPage = computed(
+  () => showHistory.value && typeof route.query.id === 'string',
+)
 const dailyGroups = computed(() => groupTrucksByBrand(trucks.value))
 const filteredHistory = computed(() => {
   const term = historySearch.value.trim().toLocaleLowerCase('es')

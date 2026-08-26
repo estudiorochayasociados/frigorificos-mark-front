@@ -22,6 +22,18 @@ const routes = [
         component: () => import('@/pages/Zona1/BalanzaForm2.vue'),
       },
       { path: 'produccion', component: () => import('@/pages/Zona2/ProduccionPage.vue') },
+      {
+        path: 'produccion/historial',
+        component: () => import('@/pages/Zona2/ProduccionHistorialPage.vue'),
+      },
+      {
+        path: 'produccion/balance',
+        component: () => import('@/pages/Zona2/BalanceMasaPage.vue'),
+      },
+      {
+        path: 'produccion/proceso',
+        component: () => import('@/pages/Zona2/ProduccionProcesoPage.vue'),
+      },
       { path: 'comercial', redirect: '/expedicion?view=pedidos' },
       { path: 'expedicion', component: () => import('@/pages/Zona3/Zona3Page.vue') },
     ],

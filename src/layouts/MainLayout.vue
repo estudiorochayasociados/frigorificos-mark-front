@@ -69,7 +69,7 @@
               <span>Producciones</span>
             </router-link>
             <router-link
-              to="/produccion?view=historial"
+              to="/produccion/historial"
               :class="['nav-item', productionSectionClass('historial')]"
               active-class="route-match"
               exact-active-class="route-exact-match"
@@ -78,7 +78,7 @@
               <span>Historial</span>
             </router-link>
             <router-link
-              to="/produccion?view=balance"
+              to="/produccion/balance"
               :class="['nav-item', productionSectionClass('balance')]"
               active-class="route-match"
               exact-active-class="route-exact-match"
@@ -145,7 +145,7 @@
           <span>Producciones</span>
         </router-link>
         <router-link
-          to="/produccion?view=historial"
+          to="/produccion/historial"
           :class="['bottom-nav-item', productionSectionClass('historial')]"
           active-class="route-match"
           exact-active-class="route-exact-match"
@@ -154,7 +154,7 @@
           <span>Historial</span>
         </router-link>
         <router-link
-          to="/produccion?view=balance"
+          to="/produccion/balance"
           :class="['bottom-nav-item', productionSectionClass('balance')]"
           active-class="route-match"
           exact-active-class="route-exact-match"
@@ -271,8 +271,8 @@ function expeditionSectionClass(section) {
 function productionSectionClass(section) {
   const active =
     section === 'producciones'
-      ? route.query.view !== 'historial' && route.query.view !== 'balance'
-      : route.query.view === section
+      ? route.path === '/produccion' || route.path === '/produccion/proceso'
+      : route.path === `/produccion/${section}`
   return active ? 'router-link-exact-active' : ''
 }
 </script>

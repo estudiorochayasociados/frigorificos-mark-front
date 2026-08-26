@@ -5,7 +5,11 @@ export function truckBirds(truck) {
 }
 
 export function truckLosses(truck) {
-  return Math.max(0, Number(truck?.muertos || 0)) + Math.max(0, Number(truck?.decomisos || 0))
+  return (
+    Math.max(0, Number(truck?.muertos || 0)) +
+    Math.max(0, Number(truck?.decomisos || 0)) +
+    Math.max(0, Number(truck?.decomisosVisc || 0))
+  )
 }
 
 export function truckAvailableBirds(truck) {
@@ -24,8 +28,9 @@ export function groupTrucksByBrand(trucks, date) {
     .filter(
       (truck) =>
         truck?.client &&
-        productionDateForTruck(truck) === date &&
-        Boolean(truck.lineConfirmedAt || truck.fin),
+        (!date
+          ? true
+          : productionDateForTruck(truck) === date && Boolean(truck.lineConfirmedAt || truck.fin)),
     )
     .forEach((truck) => {
       const current = groups.get(truck.client) || []

@@ -432,7 +432,7 @@ const productionColumns = [
 ]
 
 const showHistory = computed(() => false)
-const showMassBalance = computed(() => false)
+const showMassBalance = computed(() => true)
 const showHistoryDetailPage = computed(() => false)
 const dailyGroups = computed(() => groupTrucksByBrand(trucks.value))
 const filteredHistory = computed(() => {
