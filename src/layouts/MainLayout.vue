@@ -33,7 +33,7 @@
           </template>
           <template v-if="currentRole === 'expedicion'">
             <router-link
-              to="/expedicion"
+              to="/expedicion/stock"
               :class="['top-nav-item', expeditionSectionClass('stock')]"
               active-class="route-match"
               exact-active-class="route-exact-match"
@@ -60,7 +60,7 @@
               <span>Repartos</span>
             </router-link>
             <router-link
-              to="/expedicion?view=movimientos"
+              to="/expedicion/movimientos"
               :class="['top-nav-item', expeditionSectionClass('movimientos')]"
               active-class="route-match"
               exact-active-class="route-exact-match"
@@ -70,7 +70,6 @@
             </router-link>
           </template>
         </nav>
-
       </q-toolbar>
     </q-header>
 
@@ -150,7 +149,7 @@ const roles = [
     label: 'Zona 3',
     caption: 'Cargas y despachos',
     icon: Warehouse,
-    to: '/expedicion',
+    to: '/expedicion/stock',
   },
 ]
 
@@ -176,9 +175,9 @@ function logout() {
 function expeditionSectionClass(section) {
   const active =
     section === 'stock'
-      ? route.path === '/expedicion' && !route.query.view
+      ? (route.path === '/expedicion' || route.path === '/expedicion/stock') && !route.query.view
       : section === 'movimientos'
-        ? route.query.view === 'movimientos'
+        ? route.path === '/expedicion/movimientos' || route.query.view === 'movimientos'
         : route.path.startsWith(`/expedicion/${section}`) || route.query.view === section
   return active ? 'router-link-exact-active' : ''
 }

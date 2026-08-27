@@ -31,11 +31,22 @@ const routes = [
         component: () => import('@/pages/Zona2/ProduccionProcesoPage.vue'),
       },
       { path: 'comercial', redirect: '/expedicion/pedidos' },
-      { path: 'expedicion', component: () => import('@/pages/Zona3/Zona3Page.vue') },
-      { path: 'expedicion/pedidos', component: () => import('@/pages/Zona3/Zona3Page.vue') },
-      { path: 'expedicion/pedidos/nuevo', component: () => import('@/pages/Zona3/Zona3Page.vue') },
-      { path: 'expedicion/repartos', component: () => import('@/pages/Zona3/Zona3Page.vue') },
-      { path: 'expedicion/repartos/nuevo', component: () => import('@/pages/Zona3/Zona3Page.vue') },
+      { path: 'expedicion', redirect: '/expedicion/stock' },
+      { path: 'expedicion/stock', component: () => import('@/pages/Zona3/StockPage.vue') },
+      { path: 'expedicion/pedidos', component: () => import('@/pages/Zona3/PedidosPage.vue') },
+      {
+        path: 'expedicion/pedidos/nuevo',
+        component: () => import('@/pages/Zona3/PedidosPage.vue'),
+      },
+      { path: 'expedicion/repartos', component: () => import('@/pages/Zona3/RepartosPage.vue') },
+      {
+        path: 'expedicion/repartos/nuevo',
+        component: () => import('@/pages/Zona3/RepartosPage.vue'),
+      },
+      {
+        path: 'expedicion/movimientos',
+        component: () => import('@/pages/Zona3/MovimientosPage.vue'),
+      },
     ],
   },
 
