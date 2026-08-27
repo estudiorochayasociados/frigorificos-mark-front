@@ -30,8 +30,12 @@ const routes = [
         path: 'produccion/proceso',
         component: () => import('@/pages/Zona2/ProduccionProcesoPage.vue'),
       },
-      { path: 'comercial', redirect: '/expedicion?view=pedidos' },
+      { path: 'comercial', redirect: '/expedicion/pedidos' },
       { path: 'expedicion', component: () => import('@/pages/Zona3/Zona3Page.vue') },
+      { path: 'expedicion/pedidos', component: () => import('@/pages/Zona3/Zona3Page.vue') },
+      { path: 'expedicion/pedidos/nuevo', component: () => import('@/pages/Zona3/Zona3Page.vue') },
+      { path: 'expedicion/repartos', component: () => import('@/pages/Zona3/Zona3Page.vue') },
+      { path: 'expedicion/repartos/nuevo', component: () => import('@/pages/Zona3/Zona3Page.vue') },
     ],
   },
 

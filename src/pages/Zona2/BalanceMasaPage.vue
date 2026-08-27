@@ -159,6 +159,9 @@
               suffix="%"
             />
           </div>
+          <div v-if="balanceValidation.message" class="inline-warning mass-balance-warning">
+            <AlertCircle :size="18" /><span>{{ balanceValidation.message }}</span>
+          </div>
           <div class="mass-balance-results mass-balance-results--compact">
             <article><span>Entrada</span><strong>{{ decimal(balanceTotals.inputKg) }} kg</strong></article>
             <article><span>Absorción</span><strong>{{ decimal(balanceTotals.absorptionKg) }} kg</strong></article>
@@ -447,6 +450,7 @@ const balanceLines = computed(() =>
       record: line,
       source,
       birdsToProcess,
+      plantNetKg,
       averagePlantWeight,
       inputKg: birdsToProcess * averagePlantWeight,
       confiscationKg: nonNegative(source?.decomisos) * averagePlantWeight,
@@ -474,6 +478,23 @@ const balanceTotals = computed(() => {
       confiscationKg,
     }),
   }
+})
+const balanceValidation = computed(() => {
+  const missingPlantWeight = balanceLines.value.filter(
+    (line) => truckBirds(line.source) > 0 && line.plantNetKg <= 0,
+  )
+  const missingParameters = ['yieldPercent', 'absorptionPercent', 'visceraPercent', 'featherPercent'].some(
+    (field) => selectedMassBalance.value?.general?.[field] == null,
+  )
+  if (missingPlantWeight.length)
+    return {
+      message: 'Falta registrar el peso bruto y la tara de Planta en uno o más camiones.',
+    }
+  if (missingParameters)
+    return {
+      message: 'Completa los parámetros generales reales antes de tomar el balance como definitivo.',
+    }
+  return { message: '' }
 })
 watch(productions, (value) => localStorage.setItem(productionKey, JSON.stringify(value)), {
   deep: true,
@@ -537,15 +558,15 @@ function loadArray(key) {
 function normalizeMassBalance(balance) {
   return {
     ...balance,
-    general: normalizeBalanceGeneral(balance.general || balance.lines?.[0]),
+    general: normalizeBalanceGeneral(balance.general),
     lines: (balance.lines || []).map((line) => ({
       ...line,
       source: line.source || {},
-      averageWeight: nonNegative(line.averageWeight),
-      yieldPercent: nonNegative(line.yieldPercent),
-      absorptionPercent: nonNegative(line.absorptionPercent || 8),
-      visceraPercent: nonNegative(line.visceraPercent || 15),
-      featherPercent: nonNegative(line.featherPercent || 8),
+      averageWeight: optionalNumber(line.averageWeight),
+      yieldPercent: optionalNumber(line.yieldPercent),
+      absorptionPercent: optionalNumber(line.absorptionPercent),
+      visceraPercent: optionalNumber(line.visceraPercent),
+      featherPercent: optionalNumber(line.featherPercent),
     })),
   }
 }
@@ -658,10 +679,10 @@ function openProduction(group) {
 
 function normalizeBalanceGeneral(values = {}) {
   return {
-    yieldPercent: nonNegative(values.yieldPercent),
-    absorptionPercent: nonNegative(values.absorptionPercent || 8),
-    visceraPercent: nonNegative(values.visceraPercent || 15),
-    featherPercent: nonNegative(values.featherPercent || 8),
+    yieldPercent: optionalNumber(values.yieldPercent),
+    absorptionPercent: optionalNumber(values.absorptionPercent),
+    visceraPercent: optionalNumber(values.visceraPercent),
+    featherPercent: optionalNumber(values.featherPercent),
   }
 }
 
@@ -688,11 +709,11 @@ function balanceLineFromTruck(truck, savedLine = null) {
     ...savedLine,
     truckId: truck.id,
     source: { ...truck },
-    averageWeight: nonNegative(savedLine?.averageWeight),
-    yieldPercent: nonNegative(savedLine?.yieldPercent),
-    absorptionPercent: nonNegative(savedLine?.absorptionPercent || 8),
-    visceraPercent: nonNegative(savedLine?.visceraPercent || 15),
-    featherPercent: nonNegative(savedLine?.featherPercent || 8),
+    averageWeight: optionalNumber(savedLine?.averageWeight),
+    yieldPercent: optionalNumber(savedLine?.yieldPercent),
+    absorptionPercent: optionalNumber(savedLine?.absorptionPercent),
+    visceraPercent: optionalNumber(savedLine?.visceraPercent),
+    featherPercent: optionalNumber(savedLine?.featherPercent),
   }
 }
 
@@ -812,6 +833,10 @@ function signedDecimal(value) {
 }
 function nonNegative(value) {
   return Math.max(0, Number(value || 0))
+}
+function optionalNumber(value) {
+  if (value === null || value === undefined || value === '') return null
+  return nonNegative(value)
 }
 function shortDate(value) {
   if (!value) return '-'

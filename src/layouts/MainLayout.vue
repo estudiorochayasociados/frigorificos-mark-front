@@ -42,7 +42,7 @@
               <span>Stock</span>
             </router-link>
             <router-link
-              to="/expedicion?view=pedidos"
+              to="/expedicion/pedidos"
               :class="['top-nav-item', expeditionSectionClass('pedidos')]"
               active-class="route-match"
               exact-active-class="route-exact-match"
@@ -51,13 +51,22 @@
               <span>Pedidos</span>
             </router-link>
             <router-link
-              to="/expedicion?view=cargas"
-              :class="['top-nav-item', expeditionSectionClass('cargas')]"
+              to="/expedicion/repartos"
+              :class="['top-nav-item', expeditionSectionClass('repartos')]"
               active-class="route-match"
               exact-active-class="route-exact-match"
             >
               <Truck :size="18" />
-              <span>Cargas</span>
+              <span>Repartos</span>
+            </router-link>
+            <router-link
+              to="/expedicion?view=movimientos"
+              :class="['top-nav-item', expeditionSectionClass('movimientos')]"
+              active-class="route-match"
+              exact-active-class="route-exact-match"
+            >
+              <Warehouse :size="18" />
+              <span>Movimientos</span>
             </router-link>
           </template>
         </nav>
@@ -165,8 +174,12 @@ function logout() {
 }
 
 function expeditionSectionClass(section) {
-  const view = route.query.view
-  const active = section === 'stock' ? !view : view === section
+  const active =
+    section === 'stock'
+      ? route.path === '/expedicion' && !route.query.view
+      : section === 'movimientos'
+        ? route.query.view === 'movimientos'
+        : route.path.startsWith(`/expedicion/${section}`) || route.query.view === section
   return active ? 'router-link-exact-active' : ''
 }
 

@@ -94,61 +94,44 @@
                 <p>Ingresa valores en kilogramos, sin puntos.</p>
               </div>
             </div>
-            <div class="weight-groups">
-              <div class="weight-group">
-                <h4>Origen</h4>
-                <div class="form-grid form-grid--compact-two">
-                  <NonNegativeInput
-                    v-model="form.brutoOrigen"
-                    label="Peso bruto"
-                    suffix="kg"
-                    outlined
-                    dense
-                    class="field-control"
-                  />
-                  <NonNegativeInput
-                    v-model="form.taraOrigen"
-                    label="Tara"
-                    suffix="kg"
-                    outlined
-                    dense
-                    class="field-control"
-                  />
-                </div>
-              </div>
-              <div class="weight-group weight-group--highlight">
-                <h4>Planta</h4>
-                <div class="form-grid form-grid--compact-two">
-                  <NonNegativeInput
-                    v-model="form.brutoPlanta"
-                    label="Peso bruto"
-                    suffix="kg"
-                    outlined
-                    dense
-                    class="field-control"
-                  />
-                  <NonNegativeInput
-                    v-model="form.taraPlanta"
-                    label="Tara"
-                    suffix="kg"
-                    outlined
-                    dense
-                    class="field-control"
-                  />
-                </div>
-              </div>
-            </div>
-            <div class="form-grid form-grid--two form-grid-spaced">
+            <div class="form-grid form-grid--two">
               <NonNegativeInput
-                v-model="form.avesOrigen"
-                label="Aves informadas por granja"
+                v-model="form.brutoOrigen"
+                label="Peso bruto origen"
+                suffix="kg"
                 outlined
                 dense
                 class="field-control"
               />
               <NonNegativeInput
-                v-model="form.avesDte"
-                label="Cantidad aves DTE"
+                v-model="form.taraOrigen"
+                label="Tara origen"
+                suffix="kg"
+                outlined
+                dense
+                class="field-control"
+              />
+              <NonNegativeInput
+                v-model="form.brutoPlanta"
+                label="Peso bruto planta"
+                suffix="kg"
+                outlined
+                dense
+                class="field-control"
+              />
+              <NonNegativeInput
+                v-model="form.taraPlanta"
+                label="Tara planta"
+                suffix="kg"
+                outlined
+                dense
+                class="field-control"
+              />
+            </div>
+            <div class="form-grid form-grid--two form-grid-spaced">
+              <NonNegativeInput
+                v-model="form.avesOrigen"
+                label="Cantidad de aves"
                 outlined
                 dense
                 class="field-control"
@@ -225,7 +208,7 @@ const isStep1Complete = computed(
   () =>
     Boolean(form.client?.trim()) &&
     Boolean(form.chasis?.trim()) &&
-    (Number(form.avesOrigen || 0) > 0 || Number(form.avesDte || 0) > 0) &&
+    Number(form.avesOrigen || 0) > 0 &&
     (calculateNet(form.brutoOrigen, form.taraOrigen) > 0 ||
       calculateNet(form.brutoPlanta, form.taraPlanta) > 0),
 )
@@ -236,7 +219,7 @@ function saveTruck() {
   const payload = {
     ...form,
     id: form.id || createId(),
-    avesOrigen: Number(form.avesOrigen || form.avesDte || 0),
+    avesOrigen: Number(form.avesOrigen || 0),
     productionOrder: Number(form.productionOrder || 0) || nextProductionOrder(trucks),
     status: 'registrado',
     classification: truckClassificationKey(form),

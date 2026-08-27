@@ -4,69 +4,44 @@
       <template v-if="showOrders">
         <header class="page-header">
           <div>
-            <span class="eyebrow"><ClipboardList :size="14" /> ZONA 3 · EXPEDICIÓN</span>
             <h1>Pedidos para expedición</h1>
             <p>Documentos que luego se preparan y asocian a una carga.</p>
           </div>
-          <button class="primary-action" type="button" @click="openOrderDialog">
+          <button class="primary-action" type="button" @click="openOrderForm">
             <Plus :size="18" /> Nuevo pedido
           </button>
         </header>
 
-        <section class="zone3-metrics">
-          <article>
-            <span>Pendientes</span><strong>{{ pendingOrders.length }}</strong>
-          </article>
-          <article>
-            <span>Asignados</span><strong>{{ assignedOrders.length }}</strong>
-          </article>
-          <article>
-            <span>Despachados</span><strong>{{ dispatchedOrders.length }}</strong>
-          </article>
-          <article>
-            <span>Cajas solicitadas</span><strong>{{ number(totalRequested) }}</strong>
-          </article>
-        </section>
-
         <section class="data-card zone3-card">
-          <div class="zone3-toolbar">
-            <div>
-              <h2>Documentos para cargar</h2>
-              <p>El número de documento y el folio conservan la referencia con SAP.</p>
-            </div>
-            <q-input v-model="orderSearch" outlined dense label="Buscar documento o cliente">
-              <template #prepend><Search :size="17" /></template>
-            </q-input>
-          </div>
-
-          <div v-if="filteredOrders.length" class="order-list">
-            <article v-for="order in filteredOrders" :key="order.id" class="order-row">
-              <div class="order-document">
-                <span class="document-icon"><FileText :size="19" /></span>
-                <div>
-                  <strong>{{ order.documentType }} {{ order.documentNumber }}</strong>
-                  <small>Folio {{ order.folio || 'sin informar' }}</small>
-                </div>
-              </div>
-              <div>
-                <span>Cliente</span>
-                <strong>{{ order.client }}</strong>
-                <small>SAP {{ order.clientCode || '-' }}</small>
-              </div>
-              <div>
-                <span>Destino</span>
-                <strong>{{ order.destination || '-' }}</strong>
-              </div>
-              <div>
-                <span>Mercadería</span>
-                <strong>{{ number(orderBoxes(order)) }} cajas</strong>
-                <small>{{ order.lines.length }} renglones</small>
-              </div>
-              <span :class="['status-pill', orderStatusClass(order)]">{{
-                orderStatus(order)
-              }}</span>
-            </article>
-          </div>
+          <q-table
+            v-if="filteredOrders.length"
+            flat
+            row-key="id"
+            :rows="filteredOrders"
+            :columns="orderColumns"
+            :pagination="{ rowsPerPage: 0 }"
+            hide-pagination
+            class="operation-table"
+          >
+            <template #body="props">
+              <q-tr :props="props">
+                <q-td key="document" :props="props">
+                  <strong>{{ props.row.documentType }} {{ props.row.documentNumber }}</strong>
+                </q-td>
+                <q-td key="folio" :props="props">{{ props.row.folio || '-' }}</q-td>
+                <q-td key="client" :props="props">
+                  <strong>{{ props.row.client }}</strong>
+                  <small v-if="props.row.clientCode">SAP {{ props.row.clientCode }}</small>
+                </q-td>
+                <q-td key="destination" :props="props">{{ props.row.destination || '-' }}</q-td>
+                <q-td key="boxes" :props="props"><strong>{{ number(orderBoxes(props.row)) }}</strong></q-td>
+                <q-td key="lines" :props="props">{{ (props.row.lines || []).length }}</q-td>
+                <q-td key="status" :props="props">
+                  <span :class="['status-pill', orderStatusClass(props.row)]">{{ orderStatus(props.row) }}</span>
+                </q-td>
+              </q-tr>
+            </template>
+          </q-table>
           <div v-else class="zone3-empty">
             <ClipboardList :size="36" />
             <strong>No hay pedidos para mostrar</strong>
@@ -81,13 +56,11 @@
             <h1>Stock del día</h1>
             <p>Producto terminado recibido desde Zona 2, agrupado por marca comercial.</p>
           </div>
-          <button class="secondary-action" type="button" @click="openWarehouseTransfer">
-            <Warehouse :size="18" /> Movimiento entre almacenes
-          </button>
         </header>
 
         <section class="data-card zone3-card">
           <q-table
+            v-if="dailyStockGroups.length"
             flat
             row-key="brand"
             :rows="dailyStockGroups"
@@ -157,17 +130,44 @@
           </div>
         </section>
 
-        <section v-if="warehouseTransfers.length" class="data-card zone3-card stock-transfer-history">
-          <div class="zone3-toolbar">
-            <div>
-              <h2>Movimientos entre almacenes</h2>
-              <p>Registro independiente de las órdenes y cargas de expedición.</p>
-            </div>
+      </template>
+
+      <template v-else-if="showMovements">
+        <header class="page-header stock-transfer-heading">
+          <div>
+            <h1>Movimientos entre almacenes</h1>
+            <p>Traslados internos de stock entre cámaras, depósitos o posiciones.</p>
           </div>
-          <div v-for="movement in warehouseTransfers" :key="movement.id" class="stock-transfer-row">
-            <div><strong>{{ movement.stockLabel }}</strong><small>{{ number(movement.quantity) }} cajas</small></div>
-            <span>{{ movement.originWarehouse }} → {{ movement.destinationWarehouse }}</span>
-            <small>{{ dateTime(movement.createdAt) }}</small>
+          <button class="secondary-action" type="button" @click="openWarehouseTransfer">
+            <Warehouse :size="18" /> Movimiento entre almacenes
+          </button>
+        </header>
+
+        <section class="data-card zone3-card stock-transfer-history">
+          <q-table
+            v-if="warehouseTransfers.length"
+            flat
+            row-key="id"
+            :rows="warehouseTransfers"
+            :columns="movementColumns"
+            :pagination="{ rowsPerPage: 0 }"
+            hide-pagination
+            class="operation-table"
+          >
+            <template #body="props">
+              <q-tr :props="props">
+                <q-td key="stock" :props="props"><strong>{{ props.row.stockLabel }}</strong></q-td>
+                <q-td key="quantity" :props="props">{{ number(props.row.quantity) }}</q-td>
+                <q-td key="origin" :props="props">{{ transferOrigin(props.row) }}</q-td>
+                <q-td key="destination" :props="props">{{ transferDestination(props.row) }}</q-td>
+                <q-td key="createdAt" :props="props">{{ dateTime(props.row.createdAt) }}</q-td>
+              </q-tr>
+            </template>
+          </q-table>
+          <div v-else class="zone3-empty">
+            <Warehouse :size="36" />
+            <strong>Sin movimientos registrados</strong>
+            <span>Usa el botón de la sección para registrar un traslado interno.</span>
           </div>
         </section>
       </template>
@@ -175,90 +175,52 @@
       <template v-else-if="!activeLoad">
         <header class="page-header">
           <div>
-            <span class="eyebrow"><Truck :size="14" /> ZONA 3 · EXPEDICIÓN</span>
-            <h1>Cargas y despachos</h1>
-            <p>Fletes armados con pedidos y stock terminado de Zona 2.</p>
+            <h1>Repartos</h1>
+            <p>Repartos definidos por Comercial/Logística para preparar y despachar.</p>
           </div>
-          <button
-            class="primary-action"
-            type="button"
-            :disabled="!pendingOrders.length"
-            @click="openLoadDialog"
-          >
-            <Plus :size="18" /> Nueva carga
-          </button>
-        </header>
-
-        <section class="zone3-metrics">
-          <article>
-            <span>Pedidos disponibles</span><strong>{{ pendingOrders.length }}</strong>
-          </article>
-          <article>
-            <span>En preparación</span><strong>{{ openLoads.length }}</strong>
-          </article>
-          <article>
-            <span>Despachadas</span><strong>{{ dispatchedLoads.length }}</strong>
-          </article>
-          <article>
-            <span>Stock disponible</span><strong>{{ number(totalAvailableStock) }}</strong>
-          </article>
-        </section>
-
-        <section class="data-card zone3-card">
-          <div class="zone3-toolbar">
-            <div>
-              <h2>Fletes</h2>
-              <p>Cada carga puede contener varios documentos y clientes.</p>
-            </div>
-            <q-input v-model="loadSearch" outlined dense label="Buscar carga, patente o cliente">
-              <template #prepend><Search :size="17" /></template>
-            </q-input>
-          </div>
-          <div v-if="filteredLoads.length" class="load-grid">
+          <div class="page-header-actions">
             <button
-              v-for="load in filteredLoads"
-              :key="load.id"
-              class="load-card"
+              class="primary-action"
               type="button"
-              @click="openLoad(load)"
+              :disabled="!pendingOrders.length"
+              @click="openLoadDialog"
             >
-              <header>
-                <span class="truck-mark"><Truck :size="20" /></span>
-                <div>
-                  <strong>{{ load.code }}</strong
-                  ><small>{{ shortDate(load.date) }}</small>
-                </div>
-                <span :class="['status-pill', loadStatusClass(load.status)]">{{
-                  loadStatusLabel(load.status)
-                }}</span>
-              </header>
-              <dl>
-                <div>
-                  <dt>Transporte</dt>
-                  <dd>{{ load.transport || '-' }}</dd>
-                </div>
-                <div>
-                  <dt>Patente</dt>
-                  <dd>{{ load.plate || '-' }}</dd>
-                </div>
-                <div>
-                  <dt>Dock</dt>
-                  <dd>{{ load.dock || '-' }}</dd>
-                </div>
-                <div>
-                  <dt>Documentos</dt>
-                  <dd>{{ load.orderIds.length }}</dd>
-                </div>
-              </dl>
-              <footer>
-                <span>{{ loadClients(load).join(', ') }}</span
-                ><ChevronRight :size="18" />
-              </footer>
+              <Plus :size="18" /> Nuevo reparto
             </button>
           </div>
+        </header>
+
+        <section class="data-card zone3-card">
+          <q-table
+            v-if="filteredLoads.length"
+            flat
+            row-key="id"
+            :rows="filteredLoads"
+            :columns="loadColumns"
+            :pagination="{ rowsPerPage: 0 }"
+            hide-pagination
+            class="operation-table"
+          >
+            <template #body="props">
+              <q-tr :props="props" @click="openLoad(props.row)">
+                <q-td key="code" :props="props"><strong>{{ repartoNumber(props.row) }}</strong></q-td>
+                <q-td key="plate" :props="props">{{ props.row.plate || '-' }}</q-td>
+                <q-td key="destination" :props="props">{{ loadDestinations(props.row).join(' / ') || '-' }}</q-td>
+                <q-td key="clients" :props="props">{{ loadClients(props.row).length }}</q-td>
+                <q-td key="boxes" :props="props"><strong>{{ number(loadRequestedBoxes(props.row)) }}</strong></q-td>
+                <q-td key="status" :props="props">
+                  <span :class="['status-pill', loadStatusClass(props.row.status)]">{{ loadStatusLabel(props.row.status) }}</span>
+                </q-td>
+              </q-tr>
+            </template>
+          </q-table>
           <div v-else class="zone3-empty">
-            <Truck :size="36" /><strong>Sin cargas para mostrar</strong>
-            <span>Registra pedidos desde la sección Pedidos antes de armar un flete.</span>
+            <Truck :size="36" /><strong>Sin repartos pendientes</strong>
+            <span v-if="pendingOrders.length">Crea un nuevo reparto con los pedidos pendientes.</span>
+            <span v-else>Primero crea un pedido para poder armar un reparto.</span>
+            <button v-if="!pendingOrders.length" class="secondary-action" type="button" @click="openOrderForm">
+              <ClipboardList :size="16" /> Crear pedido
+            </button>
           </div>
         </section>
       </template>
@@ -308,13 +270,13 @@
           </button>
         </nav>
 
-        <section v-if="currentLoadStep === 'preparar'" class="production-stage zone3-stage">
+        <section v-if="currentLoadStep === 'detalle'" class="production-stage zone3-stage">
           <div class="production-stage-heading">
             <div>
               <span>01</span>
               <div>
-                <h2>Preparar carga</h2>
-                <p>Asocia cada renglón con un lote de stock y la cantidad a reservar.</p>
+                <h2>Detalle de reparto</h2>
+                <p>Revisa la guía del reparto y reserva el lote de stock para cada renglón.</p>
               </div>
             </div>
           </div>
@@ -367,12 +329,12 @@
               :disabled="activeLoad.status === 'dispatched'"
               @click="confirmPreparation"
             >
-              Confirmar preparación <ArrowRight :size="17" />
+              Iniciar romaneo <ArrowRight :size="17" />
             </button>
           </div>
         </section>
 
-        <section v-if="currentLoadStep === 'cargar'" class="production-stage zone3-stage">
+        <section v-if="currentLoadStep === 'romaneo'" class="production-stage zone3-stage">
           <div class="production-stage-heading">
             <div>
               <span>02</span>
@@ -450,13 +412,13 @@
           </div>
         </section>
 
-        <section v-if="currentLoadStep === 'despachar'" class="production-stage zone3-stage">
+        <section v-if="currentLoadStep === 'documentacion'" class="production-stage zone3-stage">
           <div class="production-stage-heading">
             <div>
               <span>03</span>
               <div>
-                <h2>Despachar</h2>
-                <p>Revisa remitos y define la salida correspondiente para cada cliente.</p>
+                <h2>Documentación</h2>
+                <p>Completa remitos y define la vía de salida correspondiente para cada cliente.</p>
               </div>
             </div>
           </div>
@@ -512,10 +474,43 @@
               class="primary-action"
               type="button"
               :disabled="activeLoad.status === 'dispatched'"
+              @click="confirmDocumentation"
+            >
+              Confirmar documentación <ArrowRight :size="17" />
+            </button>
+          </div>
+        </section>
+
+        <section v-if="currentLoadStep === 'salida'" class="production-stage zone3-stage">
+          <div class="production-stage-heading">
+            <div>
+              <span>04</span>
+              <div>
+                <h2>Confirmar salida</h2>
+                <p>Valida el cierre físico del reparto y registra la salida del camión.</p>
+              </div>
+            </div>
+          </div>
+          <div class="dispatch-total">
+            <div>
+              <span>Cajas cargadas</span><strong>{{ number(loadLoadedBoxes(activeLoad)) }}</strong>
+            </div>
+            <div>
+              <span>Pallets</span><strong>{{ number(activeLoad.loading.pallets) }}</strong>
+            </div>
+            <div>
+              <span>Remitos</span><strong>{{ activeOrders.length }}</strong>
+            </div>
+          </div>
+          <div class="production-stage-actions">
+            <button
+              class="primary-action"
+              type="button"
+              :disabled="activeLoad.status === 'dispatched'"
               @click="confirmDispatch"
             >
               <Send :size="17" />
-              {{ activeLoad.status === 'dispatched' ? 'Carga despachada' : 'Confirmar despacho' }}
+              {{ activeLoad.status === 'dispatched' ? 'Salida confirmada' : 'Confirmar salida' }}
             </button>
           </div>
         </section>
@@ -523,41 +518,49 @@
     </div>
 
     <div v-else-if="showOrderFormPage" class="page-content page-content--form zone3-page">
-      <section class="zone3-dialog page-panel">
-        <q-form @submit.prevent="saveOrder">
-          <header class="dialog-header">
-            <div class="dialog-title-wrap">
-              <span class="dialog-icon"><ClipboardList :size="20" /></span>
-              <div class="dialog-heading">
-                <h2 class="dialog-title">Nuevo pedido de expedición</h2>
-                <span class="dialog-subtitle">Referencia documental para Expedición</span>
+      <header class="page-header order-form-header">
+        <div>
+          <h1>Nuevo pedido de expedición</h1>
+          <p>Referencia documental para Expedición.</p>
+        </div>
+      </header>
+
+      <q-form class="balanza-form" @submit.prevent="saveOrder">
+        <div class="balanza-form-body">
+          <section class="form-section">
+            <div class="form-section-heading">
+              <span>1</span>
+              <div>
+                <h3>Documento y cliente</h3>
+                <p>Datos comerciales del pedido.</p>
               </div>
             </div>
-            <button class="icon-action" type="button" @click="goToOrders">
-              <X :size="20" />
-            </button>
-          </header>
-          <div class="zone3-dialog-body">
-            <div class="dialog-form-grid">
+            <div class="form-grid form-grid--dialog">
               <q-select
                 v-model="orderForm.documentType"
                 outlined
                 dense
                 :options="['REMITO', 'OV']"
                 label="Tipo de documento"
+                class="field-control"
               />
               <q-input
                 v-model="orderForm.documentNumber"
                 outlined
                 dense
                 label="Número de documento *"
+                class="field-control"
               />
-              <q-input v-model="orderForm.folio" outlined dense label="Número de folio" />
-              <q-input v-model="orderForm.clientCode" outlined dense label="Código SAP cliente" />
-              <q-input v-model="orderForm.client" outlined dense label="Cliente / razón social *" />
-              <q-input v-model="orderForm.destination" outlined dense label="Destino de entrega" />
+              <q-input v-model="orderForm.folio" outlined dense label="Número de folio" class="field-control" />
+              <q-input v-model="orderForm.clientCode" outlined dense label="Código SAP cliente" class="field-control" />
+              <q-input v-model="orderForm.client" outlined dense label="Cliente / razón social *" class="field-control" />
+              <q-input v-model="orderForm.destination" outlined dense label="Destino de entrega" class="field-control" />
             </div>
-            <div class="dialog-section-title">
+          </section>
+
+          <section class="form-section">
+            <div class="form-section-heading form-section-heading--action">
+              <span>2</span>
               <div>
                 <h3>Mercadería solicitada</h3>
                 <p>Artículo, calibre y cantidad. La descripción es opcional.</p>
@@ -567,14 +570,15 @@
               </button>
             </div>
             <div v-for="(line, index) in orderForm.lines" :key="line.id" class="order-line-form">
-              <q-input v-model="line.article" outlined dense label="Artículo SAP" />
-              <q-input v-model="line.description" outlined dense label="Descripción (opcional)" />
+              <q-input v-model="line.article" outlined dense label="Artículo SAP" class="field-control" />
+              <q-input v-model="line.description" outlined dense label="Descripción (opcional)" class="field-control" />
               <q-select
                 v-model="line.caliber"
                 :options="caliberOptions"
                 outlined
                 dense
                 label="Calibre"
+                class="field-control"
               />
               <NonNegativeInput
                 v-model="line.quantity"
@@ -584,6 +588,7 @@
                 dense
                 label="Cantidad"
                 suffix="cajas"
+                class="field-control"
               />
               <button
                 class="icon-action"
@@ -594,40 +599,45 @@
                 <Trash2 :size="18" />
               </button>
             </div>
-          </div>
-          <footer class="dialog-footer">
-            <button class="secondary-action" type="button" @click="goToOrders">Cancelar</button
-            ><button class="primary-action" type="submit">
-              <Save :size="17" /> Guardar pedido
-            </button>
-          </footer>
-        </q-form>
-      </section>
+          </section>
+        </div>
+
+        <footer class="balanza-form-footer order-form-footer">
+          <button class="secondary-action" type="button" @click="goToOrders">Cancelar</button>
+          <button class="primary-action" type="submit"><Save :size="19" /> Guardar pedido</button>
+        </footer>
+      </q-form>
     </div>
 
     <div v-else-if="showLoadFormPage" class="page-content page-content--form zone3-page">
-      <section class="zone3-dialog load-dialog page-panel">
-        <q-form @submit.prevent="createLoad">
-          <header class="dialog-header">
-            <div class="dialog-title-wrap">
-              <span class="dialog-icon"><Truck :size="20" /></span>
-              <div class="dialog-heading">
-                <h2 class="dialog-title">Nueva carga</h2>
-                <span class="dialog-subtitle">Agrupa documentos en un mismo flete</span>
+      <header class="page-header order-form-header">
+        <div>
+          <h1>Nuevo reparto</h1>
+          <p>Agrupa pedidos en un mismo reparto.</p>
+        </div>
+      </header>
+
+      <q-form class="balanza-form" @submit.prevent="createLoad">
+        <div class="balanza-form-body balanza-form-body--two-cols">
+          <section class="form-section">
+            <div class="form-section-heading">
+              <span>1</span>
+              <div>
+                <h3>Transporte</h3>
+                <p>Fecha, camión y dock de carga.</p>
               </div>
             </div>
-            <button class="icon-action" type="button" @click="goToLoads">
-              <X :size="20" />
-            </button>
-          </header>
-          <div class="zone3-dialog-body">
-            <div class="dialog-form-grid">
-              <DateInput v-model="loadForm.date" label="Fecha" />
-              <q-input v-model="loadForm.transport" outlined dense label="Transporte" />
-              <q-input v-model="loadForm.plate" outlined dense label="Patente" />
-              <q-input v-model="loadForm.dock" outlined dense label="Dock de carga" />
+            <div class="form-grid form-grid--two">
+              <DateInput v-model="loadForm.date" label="Fecha" class="field-control" />
+              <q-input v-model="loadForm.transport" outlined dense label="Transporte" class="field-control" />
+              <q-input v-model="loadForm.plate" outlined dense label="Patente" class="field-control" />
+              <q-input v-model="loadForm.dock" outlined dense label="Dock de carga" class="field-control" />
             </div>
-            <div class="dialog-section-title">
+          </section>
+
+          <section class="form-section">
+            <div class="form-section-heading">
+              <span>2</span>
               <div>
                 <h3>Pedidos disponibles</h3>
                 <p>Selecciona uno o más documentos para el flete.</p>
@@ -644,13 +654,14 @@
                 >
               </label>
             </div>
-          </div>
-          <footer class="dialog-footer">
-            <button class="secondary-action" type="button" @click="goToLoads">Cancelar</button
-            ><button class="primary-action" type="submit"><Truck :size="17" /> Crear carga</button>
-          </footer>
-        </q-form>
-      </section>
+          </section>
+        </div>
+
+        <footer class="balanza-form-footer order-form-footer">
+          <button class="secondary-action" type="button" @click="goToLoads">Cancelar</button>
+          <button class="primary-action" type="submit"><Truck :size="19" /> Crear reparto</button>
+        </footer>
+      </q-form>
     </div>
 
     <q-dialog v-model="stockTransferDialog">
@@ -730,7 +741,6 @@ import {
   PackageCheck,
   Plus,
   Save,
-  Search,
   Send,
   Trash2,
   Truck,
@@ -754,7 +764,6 @@ const storedLoads = loadArray(loadsKey)
 const loads = ref(removeDemoReferences(storedLoads, demoOrderIds).map(normalizeLoad))
 const finishedStock = ref(loadArray(finishedStockKey))
 const warehouseTransfers = ref(loadArray(warehouseTransfersKey))
-const orderSearch = ref('')
 const loadSearch = ref('')
 const expandedStockBrands = ref(new Set())
 const stockTransferDialog = ref(false)
@@ -778,9 +787,19 @@ const orderForm = reactive(emptyOrderForm())
 const loadForm = reactive({ date: today, transport: '', plate: '', dock: '', orderIds: [] })
 const stockTransferForm = reactive(emptyWarehouseTransfer())
 const loadSteps = [
-  { number: '1', value: 'preparar', label: 'Preparar' },
-  { number: '2', value: 'cargar', label: 'Cargar' },
-  { number: '3', value: 'despachar', label: 'Despachar' },
+  { number: '1', value: 'detalle', label: 'Detalle' },
+  { number: '2', value: 'romaneo', label: 'Romaneo' },
+  { number: '3', value: 'documentacion', label: 'Documentación' },
+  { number: '4', value: 'salida', label: 'Salida' },
+]
+const orderColumns = [
+  { name: 'document', label: 'Documento', field: 'documentNumber', align: 'left' },
+  { name: 'folio', label: 'Folio', field: 'folio', align: 'left' },
+  { name: 'client', label: 'Cliente', field: 'client', align: 'left' },
+  { name: 'destination', label: 'Destino', field: 'destination', align: 'left' },
+  { name: 'boxes', label: 'Cajas solicitadas', field: (row) => orderBoxes(row), align: 'left' },
+  { name: 'lines', label: 'Renglones', field: (row) => (row.lines || []).length, align: 'left' },
+  { name: 'status', label: 'Estado', field: (row) => orderStatus(row), align: 'left' },
 ]
 const stockColumns = [
   { name: 'brand', label: 'Marca comercial', field: 'brand', align: 'left' },
@@ -789,46 +808,47 @@ const stockColumns = [
   { name: 'lot', label: 'Lote', field: 'lot', align: 'left' },
   { name: 'boxes', label: 'Cajas producidas', field: 'boxes', align: 'left' },
 ]
+const loadColumns = [
+  { name: 'code', label: 'Reparto', field: (row) => repartoNumber(row), align: 'left' },
+  { name: 'plate', label: 'Camión', field: 'plate', align: 'left' },
+  { name: 'destination', label: 'Destino', field: (row) => loadDestinations(row).join(' / '), align: 'left' },
+  { name: 'clients', label: 'Clientes', field: (row) => loadClients(row).length, align: 'left' },
+  { name: 'boxes', label: 'Cajas solicitadas', field: (row) => loadRequestedBoxes(row), align: 'left' },
+  { name: 'status', label: 'Estado', field: 'status', align: 'left' },
+]
+const movementColumns = [
+  { name: 'stock', label: 'Lote', field: 'stockLabel', align: 'left' },
+  { name: 'quantity', label: 'Cajas', field: 'quantity', align: 'left' },
+  { name: 'origin', label: 'Origen', field: (row) => transferOrigin(row), align: 'left' },
+  { name: 'destination', label: 'Destino', field: (row) => transferDestination(row), align: 'left' },
+  { name: 'createdAt', label: 'Fecha', field: 'createdAt', align: 'left' },
+]
 
-const showOrders = computed(() => route.query.view === 'pedidos')
-const showStock = computed(() => !route.query.view && !route.query.load)
-const showOrderFormPage = computed(() => route.query.action === 'pedido')
-const showLoadFormPage = computed(() => route.query.action === 'carga')
+const showOrders = computed(() => route.path === '/expedicion/pedidos' || route.query.view === 'pedidos')
+const showStock = computed(() => route.path === '/expedicion' && !route.query.view && !route.query.load)
+const showMovements = computed(() => route.query.view === 'movimientos')
+const showOrderFormPage = computed(
+  () => route.path === '/expedicion/pedidos/nuevo' || route.query.action === 'pedido',
+)
+const showLoadFormPage = computed(
+  () => route.path === '/expedicion/repartos/nuevo' || route.query.action === 'carga',
+)
 const activeLoad = computed(() => loads.value.find((load) => load.id === route.query.load))
 const currentLoadStep = computed(() => {
   const requested = route.query.step
   if (loadSteps.some((step) => step.value === requested) && canOpenLoadStep(requested))
     return requested
-  if (!activeLoad.value) return 'preparar'
-  if (activeLoad.value.status === 'dispatched' || activeLoad.value.status === 'loaded')
-    return 'despachar'
-  if (activeLoad.value.status === 'ready' || activeLoad.value.status === 'loading') return 'cargar'
-  return 'preparar'
+  if (!activeLoad.value) return 'detalle'
+  if (activeLoad.value.status === 'dispatched') return 'salida'
+  if (activeLoad.value.status === 'documented') return 'salida'
+  if (activeLoad.value.status === 'loaded') return 'documentacion'
+  if (activeLoad.value.status === 'loading' || activeLoad.value.status === 'ready') return 'romaneo'
+  return 'detalle'
 })
 const pendingOrders = computed(() =>
   orders.value.filter((order) => orderStatusKey(order) === 'pending'),
 )
-const assignedOrders = computed(() =>
-  orders.value.filter((order) => orderStatusKey(order) === 'assigned'),
-)
-const dispatchedOrders = computed(() =>
-  orders.value.filter((order) => orderStatusKey(order) === 'dispatched'),
-)
-const openLoads = computed(() => loads.value.filter((load) => load.status !== 'dispatched'))
-const dispatchedLoads = computed(() => loads.value.filter((load) => load.status === 'dispatched'))
-const totalRequested = computed(() =>
-  orders.value.reduce((sum, order) => sum + orderBoxes(order), 0),
-)
-const filteredOrders = computed(() => {
-  const term = orderSearch.value.trim().toLocaleLowerCase('es')
-  return orders.value.filter(
-    (order) =>
-      !term ||
-      `${order.documentNumber} ${order.folio} ${order.client} ${order.destination}`
-        .toLocaleLowerCase('es')
-        .includes(term),
-  )
-})
+const filteredOrders = computed(() => orders.value)
 const filteredLoads = computed(() => {
   const term = loadSearch.value.trim().toLocaleLowerCase('es')
   return [...loads.value]
@@ -924,9 +944,6 @@ const transferStockOptions = computed(() =>
     value: row.id,
   })),
 )
-const totalAvailableStock = computed(() =>
-  stockRows.value.reduce((sum, row) => sum + stockAvailable(row), 0),
-)
 const activeOrders = computed(() =>
   activeLoad.value
     ? activeLoad.value.orderIds
@@ -951,10 +968,10 @@ watch(warehouseTransfers, (value) => localStorage.setItem(warehouseTransfersKey,
   deep: true,
 })
 watch(
-  () => route.query.action,
-  (action) => {
-    if (action === 'pedido') Object.assign(orderForm, emptyOrderForm())
-    if (action === 'carga')
+  () => [route.path, route.query.action],
+  () => {
+    if (showOrderFormPage.value) Object.assign(orderForm, emptyOrderForm())
+    if (showLoadFormPage.value)
       Object.assign(loadForm, { date: today, transport: '', plate: '', dock: '', orderIds: [] })
   },
   { immediate: true },
@@ -1012,8 +1029,8 @@ function removeDemoReferences(savedLoads, demoIds) {
     }))
     .filter((load) => load.orderIds.length)
 }
-function openOrderDialog() {
-  router.push({ path: '/expedicion', query: { view: 'pedidos', action: 'pedido' } })
+function openOrderForm() {
+  router.push('/expedicion/pedidos/nuevo')
 }
 function addOrderLine() {
   orderForm.lines.push(emptyOrderLine())
@@ -1087,8 +1104,14 @@ function saveWarehouseTransfer() {
   stockTransferDialog.value = false
   showFeedback('Movimiento entre almacenes registrado')
 }
+function transferOrigin(movement) {
+  return [movement.originWarehouse, movement.originLocation].filter(Boolean).join(' / ') || '-'
+}
+function transferDestination(movement) {
+  return [movement.destinationWarehouse, movement.destinationLocation].filter(Boolean).join(' / ') || '-'
+}
 function openLoadDialog() {
-  router.push({ path: '/expedicion', query: { view: 'cargas', action: 'carga' } })
+  router.push('/expedicion/repartos/nuevo')
 }
 function createLoad() {
   if (!loadForm.orderIds.length) return showFeedback('Selecciona al menos un pedido', 'error')
@@ -1115,18 +1138,19 @@ function createLoad() {
   openLoad(load)
 }
 function openLoad(load) {
-  router.push({ path: '/expedicion', query: { view: 'cargas', load: load.id, step: nextStep(load) } })
+  router.push({ path: '/expedicion/repartos', query: { load: load.id, step: nextStep(load) } })
 }
 function goToLoads() {
-  router.push({ path: '/expedicion', query: { view: 'cargas' } })
+  router.push('/expedicion/repartos')
 }
 function goToOrders() {
-  router.push({ path: '/expedicion', query: { view: 'pedidos' } })
+  router.push('/expedicion/pedidos')
 }
 function nextStep(load) {
-  if (load.status === 'dispatched' || load.status === 'loaded') return 'despachar'
-  if (load.status === 'ready' || load.status === 'loading') return 'cargar'
-  return 'preparar'
+  if (load.status === 'dispatched' || load.status === 'documented') return 'salida'
+  if (load.status === 'loaded') return 'documentacion'
+  if (load.status === 'ready' || load.status === 'loading') return 'romaneo'
+  return 'detalle'
 }
 function loadStatusLabel(status) {
   return (
@@ -1135,6 +1159,7 @@ function loadStatusLabel(status) {
       ready: 'Lista para cargar',
       loading: 'En carga',
       loaded: 'Cargada',
+      documented: 'Documentada',
       dispatched: 'Despachada',
     }[status] || 'Borrador'
   )
@@ -1142,7 +1167,7 @@ function loadStatusLabel(status) {
 function loadStatusClass(status) {
   return status === 'dispatched'
     ? 'status-success'
-    : status === 'loaded' || status === 'ready'
+    : status === 'loaded' || status === 'ready' || status === 'documented'
       ? 'status-active'
       : 'status-warning'
 }
@@ -1150,6 +1175,24 @@ function loadClients(load) {
   return load.orderIds
     .map((id) => orders.value.find((order) => order.id === id)?.client)
     .filter(Boolean)
+}
+function loadDestinations(load) {
+  return [
+    ...new Set(
+      load.orderIds
+        .map((id) => orders.value.find((order) => order.id === id)?.destination)
+        .filter(Boolean),
+    ),
+  ]
+}
+function loadRequestedBoxes(load) {
+  return load.orderIds.reduce((sum, orderId) => {
+    const order = orders.value.find((item) => item.id === orderId)
+    return sum + (order ? orderBoxes(order) : 0)
+  }, 0)
+}
+function repartoNumber(load) {
+  return load.code?.replace(/^CARGA-/, 'REP-') || '-'
 }
 function allocationKey(order, line) {
   return `${order.id}:${line.id}`
@@ -1212,7 +1255,7 @@ function confirmPreparation() {
   )
   if (invalid) return showFeedback('La reserva supera el stock del lote seleccionado', 'error')
   activeLoad.value.status = 'ready'
-  goToLoadStep('cargar')
+  goToLoadStep('romaneo')
   showFeedback('Carga lista para romaneo')
 }
 function copyPlannedToLoaded() {
@@ -1228,7 +1271,7 @@ function confirmLoading() {
     return showFeedback('Informa las cantidades cargadas', 'error')
   activeLoad.value.status = 'loaded'
   activeOrders.value.forEach((order) => dispatchFor(order))
-  goToLoadStep('despachar')
+  goToLoadStep('documentacion')
   showFeedback('Romaneo confirmado')
 }
 function dispatchFor(order) {
@@ -1247,12 +1290,19 @@ function dispatchOptions(order) {
   if (dmfEligible(order)) options.push({ label: 'DMF · Despacho Mercadería Fason', value: 'dmf' })
   return options
 }
-function confirmDispatch() {
+function confirmDocumentation() {
   if (activeOrders.value.some((order) => !dispatchFor(order).remito.trim()))
     return showFeedback('Completa el remito de cada cliente', 'error')
+  activeLoad.value.status = 'documented'
+  goToLoadStep('salida')
+  showFeedback('Documentación confirmada')
+}
+function confirmDispatch() {
+  if (activeLoad.value.status !== 'documented' && activeLoad.value.status !== 'dispatched')
+    return showFeedback('Confirma la documentación antes de la salida', 'error')
   activeLoad.value.status = 'dispatched'
   activeLoad.value.dispatchedAt = new Date().toISOString()
-  showFeedback('Carga despachada')
+  showFeedback('Salida confirmada')
 }
 function loadedForOrder(orderId) {
   return activeAllocationRows.value
@@ -1267,19 +1317,22 @@ function loadLoadedBoxes(load) {
 }
 function canOpenLoadStep(step) {
   if (!activeLoad.value) return false
-  if (step === 'preparar') return true
-  if (step === 'cargar')
-    return ['ready', 'loading', 'loaded', 'dispatched'].includes(activeLoad.value.status)
-  return ['loaded', 'dispatched'].includes(activeLoad.value.status)
+  if (step === 'detalle') return true
+  if (step === 'romaneo')
+    return ['ready', 'loading', 'loaded', 'documented', 'dispatched'].includes(activeLoad.value.status)
+  if (step === 'documentacion')
+    return ['loaded', 'documented', 'dispatched'].includes(activeLoad.value.status)
+  return ['documented', 'dispatched'].includes(activeLoad.value.status)
 }
 function loadStepDone(step) {
-  if (step === 'preparar')
-    return ['ready', 'loading', 'loaded', 'dispatched'].includes(activeLoad.value?.status)
-  if (step === 'cargar') return ['loaded', 'dispatched'].includes(activeLoad.value?.status)
+  if (step === 'detalle')
+    return ['ready', 'loading', 'loaded', 'documented', 'dispatched'].includes(activeLoad.value?.status)
+  if (step === 'romaneo') return ['loaded', 'documented', 'dispatched'].includes(activeLoad.value?.status)
+  if (step === 'documentacion') return ['documented', 'dispatched'].includes(activeLoad.value?.status)
   return activeLoad.value?.status === 'dispatched'
 }
 function goToLoadStep(step) {
-  router.push({ path: '/expedicion', query: { view: 'cargas', load: activeLoad.value.id, step } })
+  router.push({ path: '/expedicion/repartos', query: { load: activeLoad.value.id, step } })
 }
 function number(value) {
   return Math.max(0, Number(value || 0)).toLocaleString('es-AR')
@@ -1290,6 +1343,10 @@ function clone(value) {
 function shortDate(value) {
   if (!value) return '-'
   return new Date(`${String(value).slice(0, 10)}T12:00:00`).toLocaleDateString('es-AR')
+}
+function dateTime(value) {
+  if (!value) return '-'
+  return new Date(value).toLocaleString('es-AR', { dateStyle: 'short', timeStyle: 'short' })
 }
 function showFeedback(message, type = 'success') {
   feedback.message = message
@@ -1532,7 +1589,7 @@ function showFeedback(message, type = 'success') {
 }
 .zone3-steps {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   max-width: 700px;
   margin: 0 auto;
 }
@@ -1790,11 +1847,18 @@ function showFeedback(message, type = 'success') {
   gap: 14px;
   padding-top: 4px;
 }
+.form-section-heading--action button {
+  margin-left: auto;
+}
+.order-form-footer {
+  border-top: 0;
+}
 .order-line-form {
   display: grid;
-  grid-template-columns: 0.8fr 1.4fr 1fr 0.8fr 0.8fr auto;
+  grid-template-columns: 0.85fr 1.45fr 0.8fr 0.8fr auto;
   gap: 10px;
   align-items: start;
+  margin-top: 7px;
 }
 .pending-order-picker {
   display: grid;
