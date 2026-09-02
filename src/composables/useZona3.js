@@ -10,7 +10,6 @@ export function useZona3() {
   const route = useRoute()
   const router = useRouter()
   const today = new Date().toISOString().slice(0, 10)
-  const caliberOptions = ['5', '6', '7', '8', '9', '10', '11', '12', '13', '14']
   const truckTypeOptions = ['Semi', 'Balancín']
   const loadPositionOptions = [
     { label: 'Culata - descarga primero', value: 'culata' },
@@ -68,8 +67,6 @@ export function useZona3() {
     { name: 'folio', label: 'Folio', field: 'folio', align: 'left' },
     { name: 'client', label: 'Cliente', field: 'client', align: 'left' },
     { name: 'destination', label: 'Destino', field: 'destination', align: 'left' },
-    { name: 'boxes', label: 'Cajas solicitadas', field: (row) => orderBoxes(row), align: 'left' },
-    { name: 'lines', label: 'Renglones', field: (row) => (row.lines || []).length, align: 'left' },
     { name: 'status', label: 'Estado', field: (row) => orderStatus(row), align: 'left' },
   ]
   const stockColumns = [
@@ -77,7 +74,7 @@ export function useZona3() {
     { name: 'product', label: 'Producto', field: 'product', align: 'left' },
     { name: 'caliber', label: 'Calibre', field: 'caliber', align: 'left' },
     { name: 'lot', label: 'Lote', field: 'lot', align: 'left' },
-    { name: 'boxes', label: 'Cajas producidas', field: 'boxes', align: 'left' },
+    { name: 'boxes', label: 'Disponibles / producidas', field: 'boxes', align: 'left' },
   ]
   const loadColumns = [
     { name: 'code', label: 'Reparto', field: (row) => repartoNumber(row), align: 'left' },
@@ -222,6 +219,31 @@ export function useZona3() {
       value: row.id,
     })),
   )
+  const producedMerchandiseOptions = computed(() => {
+    const merchandise = new Map()
+    stockRows.value.forEach((row) => {
+      if (stockAvailable(row) <= 0) return
+      const value = merchandiseKeyFor(row)
+      const current = merchandise.get(value) || {
+        value,
+        brand: row.brand,
+        product: row.product,
+        boxes: 0,
+        calibers: new Set(),
+      }
+      current.boxes += stockAvailable(row)
+      current.calibers.add(row.caliber)
+      merchandise.set(value, current)
+    })
+    return [...merchandise.values()]
+      .sort((left, right) =>
+        `${left.brand} ${left.product}`.localeCompare(`${right.brand} ${right.product}`, 'es'),
+      )
+      .map((item) => ({
+        value: item.value,
+        label: `${item.brand} · ${item.product} · ${number(item.boxes)} cajas disponibles`,
+      }))
+  })
   const transferStockOptions = computed(() =>
     stockRows.value.map((row) => ({
       label: `${row.brand} · ${row.caliber} · Lote ${row.lot} · ${number(stockAvailable(row))} disp.`,
@@ -294,7 +316,16 @@ export function useZona3() {
     }
   }
   function emptyOrderLine() {
-    return { id: createId(), article: '', description: '', caliber: '5', quantity: 1 }
+    return {
+      id: createId(),
+      merchandiseKey: '',
+      brand: '',
+      product: '',
+      article: '',
+      description: '',
+      caliber: '',
+      quantity: 1,
+    }
   }
   function emptyWarehouseTransfer() {
     return {
@@ -307,10 +338,70 @@ export function useZona3() {
     }
   }
   function lineLabel(line) {
+    if (line.brand || line.product) return [line.brand, line.product].filter(Boolean).join(' · ')
     return (
       line.description?.trim() ||
-      (line.article ? `Artículo ${line.article}` : 'Artículo sin descripción')
+      (line.article ? `Artículo ${line.article}` : 'Mercadería sin definir')
     )
+  }
+  function merchandiseKeyFor(row) {
+    return `${row.brand}::${row.product}`
+  }
+  function merchandiseForLine(line) {
+    return stockRows.value.filter(
+      (row) => merchandiseKeyFor(row) === line.merchandiseKey && stockAvailable(row) > 0,
+    )
+  }
+  function requestedInOtherOrderLines(line, caliber) {
+    return orderForm.lines
+      .filter(
+        (candidate) =>
+          candidate.id !== line.id &&
+          candidate.merchandiseKey === line.merchandiseKey &&
+          candidate.caliber === caliber,
+      )
+      .reduce((total, candidate) => total + Math.max(0, Number(candidate.quantity || 0)), 0)
+  }
+  function availableForOrderLine(line) {
+    if (!line.merchandiseKey || !line.caliber) return 0
+    const producedAvailable = merchandiseForLine(line)
+      .filter((row) => row.caliber === line.caliber)
+      .reduce((total, row) => total + stockAvailable(row), 0)
+    return Math.max(0, producedAvailable - requestedInOtherOrderLines(line, line.caliber))
+  }
+  function caliberOptionsForLine(line) {
+    return [...new Set(merchandiseForLine(line).map((row) => row.caliber))]
+      .sort((left, right) => Number(left) - Number(right))
+      .map((caliber) => {
+        const producedAvailable = merchandiseForLine(line)
+          .filter((row) => row.caliber === caliber)
+          .reduce((total, row) => total + stockAvailable(row), 0)
+        const available = Math.max(0, producedAvailable - requestedInOtherOrderLines(line, caliber))
+        return {
+          value: caliber,
+          label: `Calibre ${caliber} · ${number(available)} cajas disponibles`,
+        }
+      })
+      .filter((option) => option.value === line.caliber || !option.label.includes('· 0 cajas'))
+  }
+  function stockOptionsForLine(line) {
+    return merchandiseForLine(line)
+      .filter((row) => row.caliber === line.caliber)
+      .map((row) => ({
+        value: row.id,
+        label: `${row.brand} · ${row.caliber} · Lote ${row.lot} · ${number(stockAvailable(row, activeLoad.value?.id))} disp.`,
+      }))
+  }
+  function selectOrderMerchandise(line) {
+    const source = merchandiseForLine(line)[0]
+    line.brand = source?.brand || ''
+    line.product = source?.product || ''
+    const calibers = caliberOptionsForLine(line)
+    if (!calibers.some((option) => option.value === line.caliber))
+      line.caliber = calibers[0]?.value || ''
+  }
+  function updateOrderLineQuantity(line, value) {
+    line.quantity = Math.min(Math.max(0, Number(value || 0)), availableForOrderLine(line))
   }
   function normalizeLoad(load) {
     return {
@@ -353,8 +444,20 @@ export function useZona3() {
   function saveOrder() {
     if (!orderForm.documentNumber.trim() || !orderForm.client.trim())
       return showFeedback('Completa documento y cliente', 'error')
-    if (orderForm.lines.some((line) => Number(line.quantity || 0) <= 0))
-      return showFeedback('Informa una cantidad válida en cada renglón', 'error')
+    if (
+      orderForm.lines.some(
+        (line) =>
+          !line.merchandiseKey ||
+          !line.caliber ||
+          !caliberOptionsForLine(line).some((option) => option.value === line.caliber) ||
+          Number(line.quantity || 0) <= 0 ||
+          Number(line.quantity || 0) > availableForOrderLine(line),
+      )
+    )
+      return showFeedback(
+        'Selecciona mercadería producida, calibre disponible y una cantidad válida',
+        'error',
+      )
     orders.value.unshift({
       ...clone(orderForm),
       id: createId(),
@@ -443,6 +546,17 @@ export function useZona3() {
       return showFeedback('Informa los kilos de cada pedido', 'error')
     if (loadFormWeightKg.value > Number(loadForm.capacityKg || 0))
       return showFeedback('La carga supera la capacidad del camión', 'error')
+    const invalidOrder = selectedLoadOrders.value.find(({ order }) =>
+      (order.lines || []).some((line) => {
+        const requested = Number(line.quantity || 0)
+        return requested <= 0 || requested > availableForStoredOrderLine(order, line)
+      }),
+    )
+    if (invalidOrder)
+      return showFeedback(
+        `El pedido ${invalidOrder.order.documentNumber} supera el stock disponible. Corrígelo antes de crear el reparto.`,
+        'error',
+      )
     const sequence = loads.value.length + 1
     const load = normalizeLoad({
       id: createId(),
@@ -561,6 +675,51 @@ export function useZona3() {
       }
     return activeLoad.value.allocations[key]
   }
+  function lineMerchandiseKey(line) {
+    return line.merchandiseKey || `${line.brand || ''}::${line.product || ''}`
+  }
+  function availableForStoredOrderLine(order, line) {
+    const available = stockRows.value
+      .filter(
+        (row) =>
+          merchandiseKeyFor(row) === lineMerchandiseKey(line) &&
+          row.caliber === String(line.caliber),
+      )
+      .reduce((total, row) => total + stockAvailable(row), 0)
+    const requestedInOrder = (order.lines || [])
+      .filter(
+        (candidate) =>
+          candidate.id !== line.id &&
+          lineMerchandiseKey(candidate) === lineMerchandiseKey(line) &&
+          String(candidate.caliber) === String(line.caliber),
+      )
+      .reduce((total, candidate) => total + Math.max(0, Number(candidate.quantity || 0)), 0)
+    return Math.max(0, available - requestedInOrder)
+  }
+  function availableForAllocation(order, line) {
+    const allocation = allocationFor(order, line)
+    const stockRow = stockRows.value.find((row) => row.id === allocation.stockRowId)
+    if (!stockRow) return 0
+    const usedByOtherLines = activeAllocationRows.value
+      .filter((item) => item.key !== allocationKey(order, line))
+      .filter((item) => item.allocation.stockRowId === stockRow.id)
+      .reduce((total, item) => total + Math.max(0, Number(item.allocation.planned || 0)), 0)
+    return Math.max(0, stockAvailable(stockRow, activeLoad.value.id) - usedByOtherLines)
+  }
+  function selectAllocationStock(order, line) {
+    const allocation = allocationFor(order, line)
+    const maximum = availableForAllocation(order, line)
+    allocation.planned = Math.min(Math.max(0, Number(allocation.planned || 0)), maximum)
+    allocation.loaded = Math.min(Math.max(0, Number(allocation.loaded || 0)), maximum)
+  }
+  function updateAllocationPlanned(order, line, value) {
+    const allocation = allocationFor(order, line)
+    allocation.planned = Math.min(
+      Math.max(0, Number(value || 0)),
+      availableForAllocation(order, line),
+    )
+    allocation.loaded = Math.min(Number(allocation.loaded || 0), allocation.planned)
+  }
   function reservedForStock(stockRowId, excludedLoadId = null) {
     return loads.value
       .filter((load) => load.status !== 'dispatched' && load.id !== excludedLoadId)
@@ -573,8 +732,27 @@ export function useZona3() {
         0,
       )
   }
+  function dispatchedForStock(stockRowId, excludedLoadId = null) {
+    return loads.value
+      .filter((load) => load.status === 'dispatched' && load.id !== excludedLoadId)
+      .reduce(
+        (sum, load) =>
+          sum +
+          Object.values(load.allocations || {})
+            .filter((item) => item.stockRowId === stockRowId)
+            .reduce((part, item) => part + Math.max(0, Number(item.loaded || 0)), 0),
+        0,
+      )
+  }
   function stockAvailable(row, excludedLoadId = null) {
-    return row ? Math.max(0, row.boxes - reservedForStock(row.id, excludedLoadId)) : 0
+    return row
+      ? Math.max(
+          0,
+          row.boxes -
+            reservedForStock(row.id, excludedLoadId) -
+            dispatchedForStock(row.id, excludedLoadId),
+        )
+      : 0
   }
   function stockLabel(stockRowId) {
     const row = stockRows.value.find((item) => item.id === stockRowId)
@@ -729,12 +907,21 @@ export function useZona3() {
     loadFormWeightKg,
     loadWeightPercent,
     repartoPreviewNumber,
-    caliberOptions,
+    producedMerchandiseOptions,
     truckTypeOptions,
     loadPositionOptions,
     openOrderForm,
     addOrderLine,
     removeOrderLine,
+    selectOrderMerchandise,
+    caliberOptionsForLine,
+    availableForOrderLine,
+    updateOrderLineQuantity,
+    stockOptionsForLine,
+    stockAvailable,
+    availableForAllocation,
+    selectAllocationStock,
+    updateAllocationPlanned,
     saveOrder,
     orderBoxes,
     orderStatus,

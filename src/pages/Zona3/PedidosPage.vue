@@ -1,29 +1,20 @@
 <template>
   <q-page class="page-shell">
     <div v-if="!showOrderFormPage" class="page-content zone3-page">
-      <header class="page-header">
-        <div>
-          <h1>Pedidos para expedición</h1>
-          <p>Documentos que luego se preparan y asocian a una carga.</p>
-        </div>
-        <button class="primary-action" type="button" @click="openOrderForm">
-          <Plus :size="18" /> Nuevo pedido
-        </button>
-      </header>
+      <PageHeader title="Pedidos para expedición" description="Documentos que luego se preparan y asocian a una carga.">
+        <template #actions><button class="primary-action" type="button" @click="openOrderForm"><Plus :size="18" /> Nuevo pedido</button></template>
+      </PageHeader>
 
-      <section class="data-card zone3-card">
-        <q-table
-          v-if="filteredOrders.length"
-          flat
-          row-key="id"
-          :rows="filteredOrders"
-          :columns="orderColumns"
-          :pagination="{ rowsPerPage: 0 }"
-          hide-pagination
-          class="operation-table"
-        >
-          <template #body="props">
-            <q-tr :props="props">
+      <ResponsiveDataTable
+        class="zone3-card"
+        :rows="filteredOrders"
+        :columns="orderColumns"
+        :mobile-fields="orderCardFields"
+        clickable
+        @select="openOrderDetail"
+      >
+          <template #desktop-body="props">
+            <q-tr :props="props" class="clickable-row" @click="openOrderDetail(props.row)">
               <q-td key="document" :props="props"
                 ><strong>{{ props.row.documentType }} {{ props.row.documentNumber }}</strong></q-td
               >
@@ -35,10 +26,6 @@
                 </small>
               </q-td>
               <q-td key="destination" :props="props">{{ props.row.destination || '-' }}</q-td>
-              <q-td key="boxes" :props="props"
-                ><strong>{{ number(orderBoxes(props.row)) }}</strong></q-td
-              >
-              <q-td key="lines" :props="props">{{ (props.row.lines || []).length }}</q-td>
               <q-td key="status" :props="props">
                 <span :class="['status-pill', orderStatusClass(props.row)]">{{
                   orderStatus(props.row)
@@ -46,22 +33,20 @@
               </q-td>
             </q-tr>
           </template>
-        </q-table>
-        <div v-else class="zone3-empty">
+          <template #mobile-leading><span class="document-icon"><ClipboardList :size="19" /></span></template>
+          <template #mobile-title="{ row }">{{ row.documentType }} {{ row.documentNumber }}</template>
+          <template #mobile-subtitle="{ row }">{{ row.client }}{{ row.clientCode ? ` (${row.clientCode})` : '' }}</template>
+          <template #mobile-status="{ row }"><span :class="['status-pill', orderStatusClass(row)]">{{ orderStatus(row) }}</span></template>
+          <template #empty><div class="zone3-empty">
           <ClipboardList :size="36" />
           <strong>No hay pedidos para mostrar</strong>
           <span>Registra un pedido para iniciar el circuito de expedición.</span>
-        </div>
-      </section>
+          </div></template>
+      </ResponsiveDataTable>
     </div>
 
     <div v-else class="page-content page-content--form zone3-page">
-      <header class="page-header order-form-header">
-        <div>
-          <h1>Nuevo pedido de expedición</h1>
-          <p>Referencia documental para Expedición.</p>
-        </div>
-      </header>
+      <PageHeader class="order-form-header" title="Nuevo pedido de expedición" description="Referencia documental para Expedición." />
 
       <q-form class="balanza-form" @submit.prevent="saveOrder">
         <div class="balanza-form-body">
@@ -125,44 +110,53 @@
               <span>2</span>
               <div>
                 <h3>Mercadería solicitada</h3>
-                <p>Artículo, calibre y cantidad. La descripción es opcional.</p>
+                <p>Selecciona mercadería producida y luego uno de sus calibres disponibles.</p>
               </div>
               <button class="secondary-action" type="button" @click="addOrderLine">
                 <Plus :size="16" /> Agregar renglón
               </button>
             </div>
             <div v-for="(line, index) in orderForm.lines" :key="line.id" class="order-line-form">
+              <q-select
+                v-model="line.merchandiseKey"
+                :options="producedMerchandiseOptions"
+                outlined
+                dense
+                emit-value
+                map-options
+                label="Mercadería producida *"
+                class="field-control"
+                @update:model-value="selectOrderMerchandise(line)"
+              />
               <q-input
                 v-model="line.article"
                 outlined
                 dense
-                label="Artículo SAP"
-                class="field-control"
-              />
-              <q-input
-                v-model="line.description"
-                outlined
-                dense
-                label="Descripción (opcional)"
+                label="Artículo SAP (opcional)"
                 class="field-control"
               />
               <q-select
                 v-model="line.caliber"
-                :options="caliberOptions"
+                :options="caliberOptionsForLine(line)"
                 outlined
                 dense
+                emit-value
+                map-options
                 label="Calibre"
                 class="field-control"
+                :disable="!line.merchandiseKey"
               />
               <NonNegativeInput
                 v-model="line.quantity"
-                :minimum="1"
+                :minimum="0"
+                :maximum="availableForOrderLine(line)"
                 type="number"
                 outlined
                 dense
                 label="Cantidad"
                 suffix="cajas"
                 class="field-control"
+                @update:model-value="updateOrderLineQuantity(line, $event)"
               />
               <button
                 class="icon-action"
@@ -183,6 +177,63 @@
       </q-form>
     </div>
 
+    <q-dialog v-model="orderDetailDialog">
+      <q-card class="zone3-dialog order-detail-dialog">
+        <header class="dialog-header">
+          <div class="dialog-title-wrap">
+            <span class="dialog-icon"><ClipboardList :size="20" /></span>
+            <div class="dialog-heading">
+              <h2 class="dialog-title">
+                {{ selectedOrder?.documentType }} {{ selectedOrder?.documentNumber }}
+              </h2>
+              <span class="dialog-subtitle">Detalle del pedido de expedición.</span>
+            </div>
+          </div>
+          <button class="icon-action" type="button" aria-label="Cerrar detalle" @click="orderDetailDialog = false">
+            <X :size="20" />
+          </button>
+        </header>
+
+        <div v-if="selectedOrder" class="zone3-dialog-body order-detail-body">
+          <section class="order-detail-summary">
+            <div>
+              <span>Cliente</span>
+              <strong>{{ selectedOrder.client }}</strong>
+              <small v-if="selectedOrder.clientCode">({{ selectedOrder.clientCode }})</small>
+            </div>
+            <div>
+              <span>Destino</span>
+              <strong>{{ selectedOrder.destination || '-' }}</strong>
+            </div>
+            <div>
+              <span>Folio</span>
+              <strong>{{ selectedOrder.folio || '-' }}</strong>
+            </div>
+            <div>
+              <span>Estado</span>
+              <strong>{{ orderStatus(selectedOrder) }}</strong>
+            </div>
+            <div>
+              <span>Cajas totales</span>
+              <strong>{{ number(orderBoxes(selectedOrder)) }}</strong>
+            </div>
+          </section>
+
+          <section class="order-detail-lines">
+            <h3>Mercadería solicitada</h3>
+            <article v-for="line in selectedOrder.lines" :key="line.id">
+              <div>
+                <strong>{{ lineLabel(line) }}</strong>
+                <small v-if="line.article">Artículo {{ line.article }}</small>
+              </div>
+              <span>Calibre {{ line.caliber }}</span>
+              <strong>{{ number(line.quantity) }} cajas</strong>
+            </article>
+          </section>
+        </div>
+      </q-card>
+    </q-dialog>
+
     <div v-if="feedback.message" :class="['feedback-toast', `feedback-toast--${feedback.type}`]">
       <AlertCircle v-if="feedback.type === 'error'" :size="19" />
       <CheckCircle2 v-else :size="19" />
@@ -192,26 +243,46 @@
 </template>
 
 <script setup>
-import { AlertCircle, CheckCircle2, ClipboardList, Plus, Save, Trash2 } from '@lucide/vue'
+import { ref } from 'vue'
+import { AlertCircle, CheckCircle2, ClipboardList, Plus, Save, Trash2, X } from '@lucide/vue'
 import NonNegativeInput from '@/components/NonNegativeInput.vue'
-import { useZona3 } from './useZona3'
-import './Zona3.css'
+import PageHeader from '@/components/PageHeader.vue'
+import ResponsiveDataTable from '@/components/ResponsiveDataTable.vue'
+import { useZona3 } from '@/composables/useZona3'
 
 const {
   showOrderFormPage,
   filteredOrders,
   orderColumns,
   orderForm,
-  caliberOptions,
+  producedMerchandiseOptions,
   feedback,
   number,
   orderBoxes,
   orderStatus,
   orderStatusClass,
+  lineLabel,
   openOrderForm,
   addOrderLine,
   removeOrderLine,
+  selectOrderMerchandise,
+  caliberOptionsForLine,
+  availableForOrderLine,
+  updateOrderLineQuantity,
   saveOrder,
   goToOrders,
 } = useZona3()
+
+const selectedOrder = ref(null)
+const orderDetailDialog = ref(false)
+const orderCardFields = [
+  { label: 'Destino', value: (order) => order.destination || '-' },
+  { label: 'Folio', value: (order) => order.folio || '-' },
+  { label: 'Cajas', value: (order) => number(orderBoxes(order)) },
+]
+
+function openOrderDetail(order) {
+  selectedOrder.value = order
+  orderDetailDialog.value = true
+}
 </script>

@@ -1,25 +1,15 @@
 <template>
   <q-page class="page-shell">
     <div class="page-content zone3-page">
-      <header class="page-header">
-        <div>
-          <h1>Stock del día</h1>
-          <p>Producto terminado recibido desde Zona 2, agrupado por marca comercial.</p>
-        </div>
-      </header>
+      <PageHeader title="Stock del día" description="Producto terminado recibido desde Zona 2, agrupado por marca comercial." />
 
-      <section class="data-card zone3-card">
-        <q-table
-          v-if="dailyStockGroups.length"
-          flat
-          row-key="brand"
-          :rows="dailyStockGroups"
-          :columns="stockColumns"
-          :pagination="{ rowsPerPage: 0 }"
-          hide-pagination
-          class="operation-table"
-        >
-          <template #body="props">
+      <ResponsiveDataTable
+        class="zone3-card"
+        row-key="brand"
+        :rows="dailyStockGroups"
+        :columns="stockColumns"
+      >
+          <template #desktop-body="props">
             <q-tr :props="props" class="stock-brand-row" @click="toggleStockBrand(props.row.brand)">
               <q-td key="brand" :props="props">
                 <div class="client-cell">
@@ -42,7 +32,9 @@
                 <span class="stock-summary-text">{{ props.row.lots.join(', ') }}</span>
               </q-td>
               <q-td key="boxes" :props="props"
-                ><strong>{{ number(props.row.boxes) }}</strong></q-td
+                ><strong
+                  >{{ number(props.row.available) }} / {{ number(props.row.boxes) }}</strong
+                ></q-td
               >
             </q-tr>
             <template v-for="product in props.row.productGroups" :key="product.name">
@@ -58,7 +50,9 @@
                 <q-td key="caliber" :props="props">Total producto</q-td>
                 <q-td key="lot" :props="props">{{ product.lots.join(', ') }}</q-td>
                 <q-td key="boxes" :props="props"
-                  ><strong>{{ number(product.boxes) }}</strong></q-td
+                  ><strong
+                    >{{ number(product.available) }} / {{ number(product.boxes) }}</strong
+                  ></q-td
                 >
               </q-tr>
               <q-tr
@@ -72,25 +66,59 @@
                 <q-td key="product" :props="props"></q-td>
                 <q-td key="caliber" :props="props">Calibre {{ row.caliber }}</q-td>
                 <q-td key="lot" :props="props">{{ row.lot }}</q-td>
-                <q-td key="boxes" :props="props">{{ number(row.boxes) }}</q-td>
+                <q-td key="boxes" :props="props"
+                  >{{ number(stockAvailable(row)) }} / {{ number(row.boxes) }}</q-td
+                >
               </q-tr>
             </template>
           </template>
-        </q-table>
-        <div v-if="dailyStockGroups.length === 0" class="zone3-empty">
+          <template #mobile><div class="stock-mobile-list lt-md">
+          <article v-for="group in dailyStockGroups" :key="group.brand" class="stock-mobile-card">
+            <button
+              type="button"
+              :aria-expanded="isStockBrandOpen(group.brand)"
+              @click="toggleStockBrand(group.brand)"
+            >
+              <span class="document-icon"><PackageCheck :size="19" /></span>
+              <span><strong>{{ group.brand }}</strong><small>{{ group.lots.length }} lote{{ group.lots.length === 1 ? '' : 's' }}</small></span>
+              <span class="stock-mobile-total"><small>Disponible / producido</small><strong>{{ number(group.available) }} / {{ number(group.boxes) }}</strong></span>
+              <ChevronRight :class="{ open: isStockBrandOpen(group.brand) }" :size="19" />
+            </button>
+            <div v-if="isStockBrandOpen(group.brand)" class="stock-mobile-products">
+              <section v-for="product in group.productGroups" :key="product.name">
+                <header><strong>{{ product.name }}</strong><span>{{ number(product.available) }} / {{ number(product.boxes) }} cajas</span></header>
+                <dl>
+                  <div v-for="row in product.rows" :key="row.id">
+                    <dt>Calibre {{ row.caliber }} · Lote {{ row.lot }}</dt>
+                    <dd>{{ number(stockAvailable(row)) }} / {{ number(row.boxes) }}</dd>
+                  </div>
+                </dl>
+              </section>
+            </div>
+          </article>
+          </div></template>
+          <template #empty><div class="zone3-empty">
           <PackageCheck :size="36" />
           <strong>Sin stock producido hoy</strong>
           <span>Cierra una producción en Zona 2 para generar stock terminado.</span>
-        </div>
-      </section>
+          </div></template>
+      </ResponsiveDataTable>
     </div>
   </q-page>
 </template>
 
 <script setup>
 import { ChevronRight, PackageCheck } from '@lucide/vue'
-import { useZona3 } from './useZona3'
-import './Zona3.css'
+import PageHeader from '@/components/PageHeader.vue'
+import ResponsiveDataTable from '@/components/ResponsiveDataTable.vue'
+import { useZona3 } from '@/composables/useZona3'
 
-const { stockColumns, dailyStockGroups, number, isStockBrandOpen, toggleStockBrand } = useZona3()
+const {
+  stockColumns,
+  dailyStockGroups,
+  number,
+  stockAvailable,
+  isStockBrandOpen,
+  toggleStockBrand,
+} = useZona3()
 </script>

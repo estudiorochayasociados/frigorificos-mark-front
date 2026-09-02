@@ -1,15 +1,13 @@
 <template>
   <q-page class="page-shell">
     <div class="page-content">
-      <header class="page-header balanza-form-header">
-        <div>
-          <h1>Faena de {{ form.client }}</h1>
-          <p>Carga rápida de horarios, novedades y resultados de línea.</p>
-        </div>
-        <button class="secondary-action" type="button" @click="goToList">
-          <X :size="18" /> Cerrar
-        </button>
-      </header>
+      <PageHeader
+        class="balanza-form-header"
+        :title="`Faena de ${form.client}`"
+        description="Carga rápida de horarios, novedades y resultados de línea."
+      >
+        <template #actions><button class="secondary-action" type="button" @click="goToList"><X :size="18" /> Cerrar</button></template>
+      </PageHeader>
 
       <q-form class="balanza-form" @submit.prevent="saveTruck">
         <div class="balanza-form-body balanza-form-body--faena">
@@ -164,6 +162,7 @@
 </template>
 
 <script setup>
+import PageHeader from '@/components/PageHeader.vue'
 import { computed, reactive } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { CalendarDays, Save, X } from '@lucide/vue'

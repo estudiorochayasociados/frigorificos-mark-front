@@ -1,28 +1,20 @@
 <template>
   <q-page class="page-shell">
     <div class="page-content">
-      <header class="page-header">
-        <div>
-          <h1>Balanza</h1>
-          <p>Registra ingresos, pesos y documentacion de cada camion.</p>
-        </div>
-        <button class="primary-action" type="button" @click="newTruck">
-          <Plus :size="20" />
-          Nuevo camion
-        </button>
-      </header>
+      <PageHeader title="Balanza" description="Registra ingresos, pesos y documentacion de cada camion.">
+        <template #actions>
+          <button class="primary-action" type="button" @click="newTruck"><Plus :size="20" /> Nuevo camion</button>
+        </template>
+      </PageHeader>
 
-      <section class="data-card">
-        <q-table
-          flat
-          row-key="id"
-          :rows="orderedTrucks"
-          :columns="columns"
-          :pagination="{ rowsPerPage: 0 }"
-          hide-pagination
-          class="operation-table gt-sm"
-        >
-          <template #body="props">
+      <ResponsiveDataTable
+        :rows="orderedTrucks"
+        :columns="columns"
+        :mobile-fields="truckCardFields"
+        clickable
+        @select="openTruckAction"
+      >
+          <template #desktop-body="props">
             <q-tr
               :props="props"
               :class="{
@@ -89,53 +81,38 @@
               </q-td>
             </q-tr>
           </template>
-        </q-table>
-
-        <div class="truck-list lt-md">
-          <article
-            v-for="truck in orderedTrucks"
-            :key="truck.id"
-            class="truck-card"
-            @click="openTruckAction(truck)"
-          >
-            <div class="truck-card-top">
-              <span class="truck-avatar"><Truck :size="20" /></span>
-              <div class="truck-card-title">
-                <strong>{{ truck.client }}</strong
-                ><span>{{ truck.chasis }} / {{ truck.acoplado || '-' }}</span>
-              </div>
-            </div>
-            <div class="truck-card-values">
-              <div>
-                <span>Fecha</span><strong>{{ truckDate(truck) }}</strong>
-              </div>
-              <div>
-                <span>Orden producción</span><strong>{{ productionOrderForTruck(truck) }}</strong>
-              </div>
-              <div>
-                <span>Tipo</span><strong>{{ truckClassificationLabel(truck) }}</strong>
-              </div>
-              <div>
-                <span>Estado</span><strong>{{ truckStatusLabel(truck) }}</strong>
-              </div>
-            </div>
-            <div class="truck-card-footer">
-              <span>{{ isTruckActionOpen(truck) ? 'Elegí una opción' : 'Elegir acción' }}</span>
-              <button type="button">
-                {{ isTruckActionOpen(truck) ? 'Cerrar' : 'Abrir' }} <ChevronRight :size="16" />
-              </button>
-            </div>
-            <div v-if="isTruckActionOpen(truck)" class="truck-card-actions" @click.stop>
-              <button type="button" @click="goToTruckEntry(truck)">
-                <Pencil :size="16" /> Modificar ingreso
-              </button>
-              <button type="button" @click="goToTruckFaena(truck)">
-                <ClipboardCheck :size="16" /> Cargar faena
-              </button>
-            </div>
-          </article>
-        </div>
-      </section>
+          <template #mobile-leading><span class="truck-avatar"><Truck :size="20" /></span></template>
+          <template #mobile-title="{ row }">{{ row.client }}</template>
+          <template #mobile-subtitle="{ row }">{{ row.chasis }} / {{ row.acoplado || '-' }}</template>
+          <template #mobile-status="{ row }">
+            <span :class="['status-pill', truckStatusClass(row)]">{{ truckStatusLabel(row) }}</span>
+          </template>
+          <template #mobile-actions="{ row }">
+            <template v-if="isTruckActionOpen(row)">
+              <button type="button" @click="goToTruckEntry(row)"><Pencil :size="16" /> Modificar</button>
+              <button type="button" @click="goToTruckFaena(row)"><ClipboardCheck :size="16" /> Faena</button>
+            </template>
+            <button
+              type="button"
+              aria-label="Subir en el orden de producción"
+              :disabled="productionOrderForTruck(row) === 1"
+              @click="moveTruck(row, -1)"
+            >
+              <ArrowUp :size="16" />
+            </button>
+            <button
+              type="button"
+              aria-label="Bajar en el orden de producción"
+              :disabled="productionOrderForTruck(row) === orderedTrucks.length"
+              @click="moveTruck(row, 1)"
+            >
+              <ArrowDown :size="16" />
+            </button>
+            <button class="danger" type="button" @click="deleteTruck(row)">
+              <Trash2 :size="16" /> Eliminar
+            </button>
+          </template>
+      </ResponsiveDataTable>
     </div>
 
     <div v-if="feedback" class="feedback-toast">
@@ -148,8 +125,9 @@
 import { computed, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import {
+  ArrowDown,
+  ArrowUp,
   CheckCircle2,
-  ChevronRight,
   ClipboardCheck,
   GripVertical,
   Pencil,
@@ -157,6 +135,8 @@ import {
   Trash2,
   Truck,
 } from '@lucide/vue'
+import PageHeader from '@/components/PageHeader.vue'
+import ResponsiveDataTable from '@/components/ResponsiveDataTable.vue'
 import {
   compareProductionOrder,
   loadBalanzaTrucks,
@@ -186,6 +166,12 @@ const columns = [
 ]
 
 const orderedTrucks = computed(() => [...trucks.value].sort(compareProductionOrder(trucks.value)))
+const truckCardFields = [
+  { label: 'Fecha', value: (truck) => truckDate(truck) },
+  { label: 'Orden', value: (truck) => productionOrderForTruck(truck) },
+  { label: 'Tipo', value: (truck) => truckClassificationLabel(truck) },
+  { label: 'DTE', value: (truck) => truck.dte || 'Sin DTE' },
+]
 
 watch(trucks, (nextTrucks) => saveBalanzaTrucks(nextTrucks), { deep: true })
 
@@ -246,6 +232,16 @@ function dropTruck(targetTruck) {
 
 function endTruckDrag() {
   draggedTruckId.value = null
+}
+
+function moveTruck(truck, offset) {
+  const reorderedTrucks = [...orderedTrucks.value]
+  const fromIndex = reorderedTrucks.findIndex((item) => item.id === truck.id)
+  const toIndex = fromIndex + offset
+  if (fromIndex < 0 || toIndex < 0 || toIndex >= reorderedTrucks.length) return
+  const [movedTruck] = reorderedTrucks.splice(fromIndex, 1)
+  reorderedTrucks.splice(toIndex, 0, movedTruck)
+  trucks.value = reorderedTrucks.map((item, index) => ({ ...item, productionOrder: index + 1 }))
 }
 
 function showFeedback(message) {

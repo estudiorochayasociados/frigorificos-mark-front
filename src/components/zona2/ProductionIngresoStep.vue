@@ -1,5 +1,9 @@
 <template>
   <section class="production-entry-step">
+    <header class="production-mobile-heading">
+      <span>01</span>
+      <div><h2>Materia prima</h2><p>Revisa los ingresos disponibles antes de producir.</p></div>
+    </header>
     <div class="raw-material-compact">
       <div class="raw-material-table">
         <div class="raw-material-table-head">
@@ -13,30 +17,26 @@
             <strong>{{ truck.chasis || 'Sin patente' }}</strong>
             <small>DTE {{ truck.dte || '-' }}</small>
           </div>
-          <span :class="['status-pill', truckClassificationClass(truck)]">
+          <span data-label="Clasificación" :class="['status-pill', truckClassificationClass(truck)]">
             {{ truckClassificationLabel(truck) }}
           </span>
-          <span :class="['status-pill', truckStatusClass(truck)]">
+          <span data-label="Estado" :class="['status-pill', truckStatusClass(truck)]">
             {{ truckStatusLabel(truck) }}
           </span>
-          <span>{{ truck.loteSenasa || '-' }}</span>
-          <strong>{{ truckUseOrder(truck.id) }}</strong>
-          <strong>{{ number(birdsFor(truck)) }}</strong>
-          <span>{{ number(truck.muertos) }}</span>
-          <span>{{ number(confiscationsFor(truck)) }}</span>
-          <strong class="available">{{ number(availableForTruck(truck)) }}</strong>
-        </div>
-        <div class="raw-material-table-row raw-material-table-row--total">
-          <div>
-            <strong>Total</strong>
-            <small>{{ activeTrucks.length }} camión{{ activeTrucks.length === 1 ? '' : 'es' }}</small>
-          </div>
-          <strong>{{ number(activeTotals.birds) }}</strong>
-          <strong>{{ number(activeTotals.deaths) }}</strong>
-          <strong>{{ number(activeTotals.confiscations) }}</strong>
-          <strong class="available">{{ number(activeTotals.available) }}</strong>
+          <span data-label="Lote">{{ truck.loteSenasa || '-' }}</span>
+          <strong data-label="Orden">{{ truckUseOrder(truck.id) }}</strong>
+          <strong data-label="Aves">{{ number(birdsFor(truck)) }}</strong>
+          <span data-label="Muertos">{{ number(truck.muertos) }}</span>
+          <span data-label="Decomisos">{{ number(confiscationsFor(truck)) }}</span>
+          <strong data-label="Disponibles" class="available">{{ number(availableForTruck(truck)) }}</strong>
         </div>
       </div>
+      <dl class="production-entry-total">
+        <div><dt>Camiones</dt><dd>{{ activeTrucks.length }}</dd></div>
+        <div><dt>Aves</dt><dd>{{ number(activeTotals.birds) }}</dd></div>
+        <div><dt>Bajas</dt><dd>{{ number(activeTotals.deaths + activeTotals.confiscations) }}</dd></div>
+        <div class="available"><dt>Disponibles</dt><dd>{{ number(activeTotals.available) }}</dd></div>
+      </dl>
     </div>
     <div class="production-stage-actions">
       <button class="primary-action" type="button" @click="$emit('confirm')">

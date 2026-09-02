@@ -77,14 +77,8 @@
 
     <div v-else class="page-content production-page">
       <template v-if="showMassBalance">
-        <header class="page-header">
-          <div>
-            <h1>Balance de masa</h1>
-            <p>
-              Balance diario generado desde Balanza y Producción, con detalle por lote de entrada.
-            </p>
-          </div>
-          <div class="production-header-actions">
+        <PageHeader title="Balance de masa" description="Balance diario generado desde Balanza y Producción, con detalle por lote de entrada.">
+          <template #actions>
             <button
               v-if="!selectedMassBalance"
               class="primary-action"
@@ -97,8 +91,8 @@
             <button v-else class="secondary-action" type="button" @click="deleteMassBalance">
               Eliminar balance
             </button>
-          </div>
-        </header>
+          </template>
+        </PageHeader>
 
         <section v-if="selectedMassBalance" class="mass-balance-summary">
           <article>
@@ -260,15 +254,9 @@
       </template>
 
       <template v-else-if="showHistory">
-        <header class="page-header">
-          <div>
-            <h1>Historial de producción</h1>
-            <p>Trazabilidad completa de entradas, consumos y producto terminado.</p>
-          </div>
-          <button class="secondary-action" type="button" @click="goToDashboard">
-            <ArrowLeft :size="17" /> Producciones del día
-          </button>
-        </header>
+        <PageHeader title="Historial de producción" description="Trazabilidad completa de entradas, consumos y producto terminado.">
+          <template #actions><button class="secondary-action" type="button" @click="goToDashboard"><ArrowLeft :size="17" /> Producciones del día</button></template>
+        </PageHeader>
 
         <section class="production-filters">
           <q-input v-model="historySearch" outlined dense label="Buscar marca, lote o DTE">
@@ -321,24 +309,18 @@
       </template>
 
       <template v-else>
-        <header class="page-header production-day-header">
-          <div>
-            <h1>Producciones del día</h1>
-            <p>Datos recibidos automáticamente desde Balanza.</p>
-          </div>
-        </header>
+        <PageHeader class="production-day-header" title="Producciones del día" description="Datos recibidos automáticamente desde Balanza." />
 
-        <section class="data-card production-list-card">
-          <q-table
-            flat
-            row-key="brand"
-            :rows="dailyGroups"
-            :columns="productionColumns"
-            :pagination="{ rowsPerPage: 0 }"
-            hide-pagination
-            class="operation-table"
-          >
-            <template #body="props">
+        <ResponsiveDataTable
+          class="production-list-card"
+          row-key="brand"
+          :rows="dailyGroups"
+          :columns="productionColumns"
+          :mobile-fields="productionCardFields"
+          clickable
+          @select="openProduction"
+        >
+            <template #desktop-body="props">
               <q-tr :props="props" @click="openProduction(props.row)">
                 <q-td key="brand" :props="props">
                   <div class="client-cell">
@@ -364,13 +346,16 @@
                 </q-td>
               </q-tr>
             </template>
-          </q-table>
-          <div v-if="dailyGroups.length === 0" class="production-empty">
+            <template #mobile-leading><span class="truck-avatar"><Truck :size="19" /></span></template>
+            <template #mobile-title="{ row }">{{ row.brand }}</template>
+            <template #mobile-subtitle>Marca comercial</template>
+            <template #mobile-status="{ row }"><span :class="['status-pill', processStatusClass(row)]">{{ processStatusLabel(row) }}</span></template>
+            <template #empty><div class="production-empty">
             <Truck :size="36" />
             <strong>No hay camiones disponibles</strong>
             <span>Los ingresos aparecerán aquí cuando Zona 1 los registre en Balanza.</span>
-          </div>
-        </section>
+            </div></template>
+        </ResponsiveDataTable>
       </template>
 
     </div>
@@ -387,6 +372,8 @@
 import { computed, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import NonNegativeInput from '@/components/NonNegativeInput.vue'
+import PageHeader from '@/components/PageHeader.vue'
+import ResponsiveDataTable from '@/components/ResponsiveDataTable.vue'
 import {
   AlertCircle,
   Calculator,
@@ -436,6 +423,11 @@ const productionColumns = [
   { name: 'brand', label: 'Marca', field: 'brand', align: 'left' },
   { name: 'trucks', label: 'Camiones', field: (row) => row.trucks.length, align: 'left' },
   { name: 'processStatus', label: 'Estado', field: (row) => processStatusLabel(row), align: 'left' },
+]
+const productionCardFields = [
+  { label: 'Camiones', value: (group) => number(group.trucks.length) },
+  { label: 'Blancos', value: (group) => number(whiteTruckCount(group)) },
+  { label: 'Negros', value: (group) => number(blackTruckCount(group)) },
 ]
 
 const showHistory = computed(() => false)

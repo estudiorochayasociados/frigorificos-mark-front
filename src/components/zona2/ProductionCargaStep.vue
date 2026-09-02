@@ -1,5 +1,9 @@
 <template>
   <section class="production-output-step">
+    <header class="production-mobile-heading">
+      <span>02</span>
+      <div><h2>Producción por calibre</h2><p>Registra únicamente las cajas terminadas.</p></div>
+    </header>
     <div class="production-step-toolbar">
       <q-select
         :model-value="production.product"
@@ -23,6 +27,7 @@
             class="output-quantity-input"
             outlined
             dense
+            :aria-label="`Cajas producidas, calibre ${output.caliber}`"
             @update:model-value="$emit('updateOutputBoxes', output.caliber, $event)"
           />
         </div>

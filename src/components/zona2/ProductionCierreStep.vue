@@ -1,5 +1,9 @@
 <template>
   <section class="production-closure-step">
+    <header class="production-mobile-heading">
+      <span>04</span>
+      <div><h2>Cierre y stock</h2><p>Verifica el resumen e identifica el lote terminado.</p></div>
+    </header>
     <div class="closure-grid">
       <div class="closure-summary">
         <section class="closure-summary-section">

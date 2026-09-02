@@ -10,6 +10,7 @@
             <span class="truck-avatar"><Truck :size="19" /></span>
             <div>
               <h1>{{ activeProduction.brand }}</h1>
+              <small>Paso {{ currentStepMeta.number }} de {{ flowSteps.length }} · {{ currentStepMeta.label }}</small>
             </div>
           </div>
         </header>
@@ -142,6 +143,9 @@ const currentStep = computed(() => {
   if (flowSteps.some((step) => step.value === requested) && canOpenStep(requested)) return requested
   return activeProduction.value ? nextStepFor(activeProduction.value) : 'ingreso'
 })
+const currentStepMeta = computed(
+  () => flowSteps.find((step) => step.value === currentStep.value) || flowSteps[0],
+)
 const activeTrucks = computed(() => {
   if (!activeProduction.value) return []
   return activeProduction.value.truckIds
@@ -466,3 +470,359 @@ function showFeedback(message, type = 'success') {
   }, 3000)
 }
 </script>
+
+<style scoped lang="scss">
+@media (max-width: 1023px) {
+  .production-flow-header {
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+
+  .production-back {
+    width: 42px;
+    min-height: 42px;
+    flex: 0 0 auto;
+    justify-content: center;
+    padding: 0;
+    border: 1px solid var(--line);
+    border-radius: 50%;
+    background: #fff;
+  }
+
+  .production-flow-title {
+    gap: 11px;
+  }
+
+  .production-flow-title .truck-avatar {
+    width: 42px;
+    height: 42px;
+    border-radius: 12px;
+  }
+
+  .production-flow-title h1 {
+    font-size: 21px;
+  }
+
+  .production-flow-title small {
+    display: block;
+    font-size: 12px;
+  }
+
+  .production-steps {
+    position: relative;
+    gap: 0;
+    margin: 0 0 22px;
+    overflow: visible;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+  }
+
+  .production-steps::before {
+    position: absolute;
+    top: 16px;
+    right: 12.5%;
+    left: 12.5%;
+    height: 2px;
+    background: #dededc;
+    content: '';
+  }
+
+  .production-steps button,
+  .production-steps button:disabled,
+  .production-steps button.active {
+    min-height: 52px;
+    gap: 6px;
+    padding: 0 2px;
+    border: 0;
+    background: transparent;
+  }
+
+  .production-steps button > span {
+    z-index: 1;
+    width: 32px;
+    height: 32px;
+    border: 3px solid var(--canvas);
+    background: #e8e8e6;
+    color: #777;
+    font-size: 11px;
+  }
+
+  .production-steps button.active > span,
+  .production-steps button.done > span {
+    background: var(--brand);
+    color: #fff;
+  }
+
+  .production-steps button small,
+  .production-steps button:disabled small {
+    color: #8b8b88;
+    font-size: 11px;
+    font-weight: 650;
+  }
+
+  .production-steps button.active small {
+    color: var(--brand-dark);
+  }
+
+  :deep(.production-mobile-heading) {
+    display: flex;
+    gap: 11px;
+    align-items: center;
+    margin-bottom: 12px;
+  }
+
+  :deep(.production-mobile-heading > span) {
+    color: var(--brand);
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+  }
+
+  :deep(.production-mobile-heading h2) {
+    margin: 0;
+    font-size: 17px;
+    letter-spacing: -0.02em;
+  }
+
+  :deep(.production-mobile-heading p) {
+    margin: 2px 0 0;
+    color: var(--muted);
+    font-size: 12px;
+  }
+
+  :deep(.raw-material-compact) {
+    gap: 10px;
+    padding: 0;
+  }
+
+  :deep(.raw-material-table),
+  :deep(.consumption-table) {
+    overflow: visible;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+  }
+
+  :deep(.raw-material-table-row:not(.raw-material-table-row--total)),
+  :deep(.consumption-table-row:not(.consumption-table-row--total)) {
+    gap: 13px 18px;
+    padding: 15px;
+    border-radius: 16px;
+    background: #fff;
+    box-shadow: 0 4px 16px rgb(0 0 0 / 4%);
+  }
+
+  :deep(.raw-material-table-row strong),
+  :deep(.consumption-table-row > span) {
+    font-size: 14px;
+  }
+
+  :deep(.raw-material-table-row [data-label]::before),
+  :deep(.consumption-table-row [data-label]::before) {
+    font-size: 11px;
+  }
+
+  :deep(.production-entry-total) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    border-radius: 15px;
+  }
+
+  :deep(.production-entry-total > div) {
+    padding: 13px 14px;
+    border-bottom: 1px solid var(--line);
+  }
+
+  :deep(.production-entry-total > div:nth-child(even)) {
+    border-right: 0;
+  }
+
+  :deep(.production-entry-total > div:nth-last-child(-n + 2)) {
+    border-bottom: 0;
+  }
+
+  :deep(.production-entry-total dt) {
+    font-size: 11px;
+  }
+
+  :deep(.production-entry-total dd) {
+    font-size: 17px;
+  }
+
+  :deep(.production-step-toolbar) {
+    margin-bottom: 10px;
+  }
+
+  :deep(.production-step-toolbar .q-field) {
+    width: 100%;
+  }
+
+  :deep(.output-table) {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    overflow: visible;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+  }
+
+  :deep(.output-table-head) {
+    display: none;
+  }
+
+  :deep(.output-table-row:not(.output-table-row--total)) {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 8px;
+    min-height: 0;
+    padding: 12px;
+    border: 1px solid var(--line);
+    border-radius: 13px;
+    background: #fff;
+  }
+
+  :deep(.output-caliber-label) {
+    font-size: 13px;
+  }
+
+  :deep(.output-quantity-cell .q-field),
+  :deep(.output-quantity-input) {
+    width: 100%;
+  }
+
+  :deep(.output-quantity-input .q-field__control),
+  :deep(.output-quantity-input .q-field__native),
+  :deep(.output-quantity-input .q-field__marginal) {
+    min-height: 40px;
+    height: 40px;
+  }
+
+  :deep(.output-table-row--total) {
+    grid-column: 1 / -1;
+    grid-template-columns: 1fr auto;
+    min-height: 52px;
+    padding: 0 15px;
+    border: 1px solid var(--line);
+    border-radius: 13px;
+  }
+
+  :deep(.output-table-row--total strong) {
+    font-size: 17px;
+  }
+
+  :deep(.consumption-summary) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    overflow: visible;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+  }
+
+  :deep(.consumption-summary > label) {
+    grid-column: 1 / -1;
+  }
+
+  :deep(.consumption-summary > div),
+  :deep(.consumption-summary > label) {
+    min-height: 58px;
+    padding: 9px 12px;
+    border: 1px solid var(--line);
+    border-radius: 13px;
+    background: #fff;
+  }
+
+  :deep(.consumption-summary-input) {
+    width: 126px;
+  }
+
+  :deep(.consumption-summary-input .q-field__control),
+  :deep(.consumption-summary-input .q-field__native),
+  :deep(.consumption-summary-input .q-field__marginal),
+  :deep(.consumption-quantity-input .q-field__control),
+  :deep(.consumption-quantity-input .q-field__native),
+  :deep(.consumption-quantity-input .q-field__marginal) {
+    min-height: 40px;
+    height: 40px;
+  }
+
+  :deep(.consumption-table-row .consumption-quantity-input) {
+    margin-top: 2px;
+  }
+
+  :deep(.consumption-table-row--total) {
+    grid-template-columns: 1fr auto;
+    min-height: 54px;
+    padding: 0 15px;
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    background: #fff;
+  }
+
+  :deep(.consumption-table-row--total > :nth-child(2)),
+  :deep(.consumption-table-row--total > :nth-child(3)) {
+    display: none;
+  }
+
+  :deep(.closure-grid) {
+    gap: 10px;
+  }
+
+  :deep(.closure-summary),
+  :deep(.finished-data) {
+    border-radius: 15px;
+  }
+
+  :deep(.closure-summary-section h3) {
+    padding: 12px 14px;
+    background: #fff;
+    color: var(--brand-dark);
+    font-size: 12px;
+  }
+
+  :deep(.closure-summary-row) {
+    grid-template-columns: 1fr auto;
+    min-height: 46px;
+    padding: 5px 14px;
+  }
+
+  :deep(.finished-data) {
+    gap: 12px;
+    padding: 15px;
+  }
+
+  :deep(.closure-input .q-field__control),
+  :deep(.closure-input .q-field__native),
+  :deep(.closure-input .q-field__marginal),
+  :deep(.finished-data .date-input .q-field__control),
+  :deep(.finished-data .date-input .q-field__native),
+  :deep(.finished-data .date-input .q-field__marginal) {
+    min-height: 44px;
+    height: 44px;
+  }
+
+  :deep(.stock-callout) {
+    padding: 14px;
+    border-radius: 13px;
+  }
+
+  :deep(.production-entry-step .production-stage-actions),
+  :deep(.production-output-step .production-stage-actions),
+  :deep(.production-consumption-step .production-stage-actions),
+  :deep(.production-closure-step .production-stage-actions) {
+    position: sticky;
+    bottom: 0;
+    z-index: 2;
+    margin: 12px -10px -14px;
+    padding: 10px 10px max(10px, env(safe-area-inset-bottom));
+    background: linear-gradient(to top, var(--canvas) 75%, transparent);
+  }
+
+  :deep(.production-stage-actions .primary-action) {
+    min-height: 48px;
+    border-radius: 13px;
+    box-shadow: 0 8px 22px rgb(239 61 53 / 22%);
+  }
+}
+</style>

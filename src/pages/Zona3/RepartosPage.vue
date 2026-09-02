@@ -2,12 +2,8 @@
   <q-page class="page-shell">
     <div v-if="!showLoadFormPage" class="page-content zone3-page">
       <template v-if="!activeLoad">
-        <header class="page-header">
-          <div>
-            <h1>Repartos</h1>
-            <p>Repartos definidos por Comercial/Logística para preparar y despachar.</p>
-          </div>
-          <div class="page-header-actions">
+        <PageHeader title="Repartos" description="Repartos definidos por Comercial/Logística para preparar y despachar.">
+          <template #actions>
             <button
               class="primary-action"
               type="button"
@@ -16,21 +12,18 @@
             >
               <Plus :size="18" /> Nuevo reparto
             </button>
-          </div>
-        </header>
+          </template>
+        </PageHeader>
 
-        <section class="data-card zone3-card">
-          <q-table
-            v-if="filteredLoads.length"
-            flat
-            row-key="id"
-            :rows="filteredLoads"
-            :columns="loadColumns"
-            :pagination="{ rowsPerPage: 0 }"
-            hide-pagination
-            class="operation-table"
-          >
-            <template #body="props">
+        <ResponsiveDataTable
+          class="zone3-card"
+          :rows="filteredLoads"
+          :columns="loadColumns"
+          :mobile-fields="loadCardFields"
+          clickable
+          @select="openLoad"
+        >
+            <template #desktop-body="props">
               <q-tr :props="props" @click="openLoad(props.row)">
                 <q-td key="code" :props="props"
                   ><strong>{{ repartoNumber(props.row) }}</strong></q-td
@@ -50,8 +43,11 @@
                 >
               </q-tr>
             </template>
-          </q-table>
-          <div v-else class="zone3-empty">
+            <template #mobile-leading><span class="document-icon"><Truck :size="19" /></span></template>
+            <template #mobile-title="{ row }">{{ repartoNumber(row) }}</template>
+            <template #mobile-subtitle="{ row }">{{ row.plate || 'Sin patente' }}</template>
+            <template #mobile-status="{ row }"><span :class="['status-pill', loadStatusClass(row.status)]">{{ loadStatusLabel(row.status) }}</span></template>
+            <template #empty><div class="zone3-empty">
             <Truck :size="36" /><strong>Sin repartos pendientes</strong>
             <span v-if="pendingOrders.length"
               >Crea un nuevo reparto con los pedidos pendientes.</span
@@ -65,8 +61,8 @@
             >
               <ClipboardList :size="16" /> Crear pedido
             </button>
-          </div>
-        </section>
+            </div></template>
+        </ResponsiveDataTable>
       </template>
 
       <template v-else>
@@ -132,16 +128,19 @@
                 dense
                 emit-value
                 map-options
-                :options="stockOptions"
+                :options="stockOptionsForLine(item.line)"
                 label="Lote"
+                @update:model-value="selectAllocationStock(item.order, item.line)"
               />
               <NonNegativeInput
                 v-model="item.allocation.planned"
+                :maximum="availableForAllocation(item.order, item.line)"
                 type="number"
                 outlined
                 dense
                 label="Reservar"
                 suffix="cajas"
+                @update:model-value="updateAllocationPlanned(item.order, item.line, $event)"
               />
             </div>
           </div>
@@ -213,6 +212,7 @@
               <strong>{{ number(item.allocation.planned) }}</strong>
               <NonNegativeInput
                 v-model="item.allocation.loaded"
+                :maximum="item.allocation.planned"
                 type="number"
                 outlined
                 dense
@@ -304,12 +304,7 @@
     </div>
 
     <div v-else class="page-content page-content--form zone3-page">
-      <header class="page-header order-form-header">
-        <div>
-          <h1>Nuevo reparto</h1>
-          <p>Agrupa pedidos en un mismo reparto.</p>
-        </div>
-      </header>
+      <PageHeader class="order-form-header" title="Nuevo reparto" description="Agrupa pedidos en un mismo reparto." />
       <q-form class="balanza-form" @submit.prevent="createLoad">
         <div class="balanza-form-body balanza-form-body--two-cols load-form-grid">
           <section class="form-section load-transport-section">
@@ -510,8 +505,9 @@ import {
 } from '@lucide/vue'
 import DateInput from '@/components/DateInput.vue'
 import NonNegativeInput from '@/components/NonNegativeInput.vue'
-import { useZona3 } from './useZona3'
-import './Zona3.css'
+import PageHeader from '@/components/PageHeader.vue'
+import ResponsiveDataTable from '@/components/ResponsiveDataTable.vue'
+import { useZona3 } from '@/composables/useZona3'
 
 const {
   showLoadFormPage,
@@ -522,7 +518,6 @@ const {
   loadSteps,
   currentLoadStep,
   activeAllocationRows,
-  stockOptions,
   stockRows,
   activeOrders,
   loadForm,
@@ -549,6 +544,10 @@ const {
   loadPositionLabel,
   lineLabel,
   stockLabel,
+  stockOptionsForLine,
+  availableForAllocation,
+  selectAllocationStock,
+  updateAllocationPlanned,
   confirmPreparation,
   copyPlannedToLoaded,
   confirmLoading,
@@ -561,4 +560,10 @@ const {
   updateTruckCapacity,
   orderBoxes,
 } = useZona3()
+
+const loadCardFields = [
+  { label: 'Destinos', value: (load) => loadDestinations(load).join(' / ') || '-' },
+  { label: 'Clientes', value: (load) => number(loadClients(load).length) },
+  { label: 'Cajas', value: (load) => number(loadRequestedBoxes(load)) },
+]
 </script>

@@ -83,6 +83,12 @@
 .client-code {
   margin-left: 6px;
 }
+.clickable-row {
+  cursor: pointer;
+}
+.clickable-row:hover td {
+  background: #faf7f6;
+}
 .order-document {
   display: flex !important;
   flex-direction: row;
@@ -317,11 +323,147 @@
   padding: 20px;
   overflow-y: auto;
 }
+.order-detail-dialog {
+  width: min(760px, 96vw);
+}
+.order-detail-body {
+  gap: 16px;
+}
+.order-detail-summary {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 1px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 13px;
+  background: var(--line);
+}
+.order-detail-summary div {
+  display: grid;
+  gap: 4px;
+  padding: 13px;
+  background: #fff;
+}
+.order-detail-summary span,
+.order-detail-summary small,
+.order-detail-lines small {
+  color: var(--muted);
+  font-size: 11px;
+}
+.order-detail-summary strong,
+.order-detail-lines strong {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.order-detail-lines {
+  display: grid;
+  gap: 8px;
+}
+.order-detail-lines h3 {
+  margin: 0;
+  font-size: 15px;
+}
+.order-detail-lines article {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 14px;
+  align-items: center;
+  padding: 12px 13px;
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  background: #fff;
+}
+.order-detail-lines article div {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.order-detail-lines article > span {
+  color: var(--muted);
+  font-size: 12px;
+}
 .stock-transfer-dialog {
   width: min(650px, 96vw);
 }
 .stock-transfer-history {
   margin-top: 18px;
+}
+.stock-mobile-list {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+}
+.stock-mobile-card {
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: #fff;
+}
+.stock-mobile-card > button {
+  display: grid;
+  width: 100%;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  gap: 10px;
+  align-items: center;
+  min-height: 68px;
+  padding: 11px 12px;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  text-align: left;
+}
+.stock-mobile-card > button > span:not(.document-icon) {
+  display: grid;
+  min-width: 0;
+}
+.stock-mobile-card small {
+  color: var(--muted);
+  font-size: 11px;
+}
+.stock-mobile-total {
+  justify-items: end;
+}
+.stock-mobile-card svg.open {
+  transform: rotate(90deg);
+}
+.stock-mobile-products {
+  display: grid;
+  gap: 10px;
+  padding: 0 12px 12px;
+}
+.stock-mobile-products section {
+  overflow: hidden;
+  border-radius: 11px;
+  background: #f7f7f6;
+}
+.stock-mobile-products header,
+.stock-mobile-products dl div {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 11px;
+}
+.stock-mobile-products header span,
+.stock-mobile-products dd {
+  font-size: 12px;
+  font-weight: 650;
+  white-space: nowrap;
+}
+.stock-mobile-products dl {
+  margin: 0;
+}
+.stock-mobile-products dl div {
+  border-top: 1px solid var(--line);
+}
+.stock-mobile-products dt {
+  color: var(--muted);
+  font-size: 12px;
+}
+.stock-mobile-products dd {
+  margin: 0;
 }
 .stock-transfer-row {
   display: grid;
@@ -361,7 +503,10 @@
 }
 .order-line-form {
   display: grid;
-  grid-template-columns: 0.85fr 1.45fr 0.8fr 0.8fr auto;
+  grid-template-columns: minmax(240px, 1.5fr) minmax(170px, 0.8fr) minmax(190px, 0.9fr) minmax(
+      150px,
+      0.65fr
+    ) auto;
   gap: 10px;
   align-items: start;
   margin-top: 7px;
@@ -584,6 +729,78 @@
     display: none;
   }
 }
+@media (max-width: 1023px) {
+  .loading-fields {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .order-line-form {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .order-line-form > :first-child,
+  .order-line-form .icon-action {
+    grid-column: 1 / -1;
+  }
+  .order-line-form .icon-action {
+    width: 44px;
+    min-height: 44px;
+    justify-self: end;
+  }
+  .load-build-overview,
+  .selected-order-list article {
+    grid-template-columns: 1fr;
+  }
+  .selected-order-fields {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .romaneo-head {
+    display: none;
+  }
+  .romaneo-table {
+    display: grid;
+    gap: 10px;
+    overflow: visible;
+    border: 0;
+    background: transparent;
+  }
+  .romaneo-row,
+  .allocation-table-row,
+  .documentation-table-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+    padding: 14px;
+    border: 1px solid var(--line);
+    border-radius: 13px;
+  }
+  .romaneo-row > div:not(.q-field)::before,
+  .romaneo-row > strong::before {
+    display: block;
+    margin-bottom: 3px;
+    color: var(--muted);
+    font-size: 10px;
+    font-weight: 500;
+  }
+  .romaneo-row > div:nth-child(1)::before {
+    content: 'Documento / cliente';
+  }
+  .romaneo-row > div:nth-child(2)::before {
+    content: 'Producto / ubicación';
+  }
+  .romaneo-row > strong:nth-child(3)::before {
+    content: 'Planificado / cargado';
+  }
+  .allocation-table-row > div:nth-child(2)::before {
+    content: 'Ubicación';
+  }
+  .allocation-table-row > div:nth-child(3)::before {
+    content: 'Producto';
+  }
+  .documentation-table-row > div:nth-child(2)::before {
+    content: 'Documento';
+  }
+  .documentation-table-row > strong:nth-child(3)::before {
+    content: 'Cargado';
+  }
+}
 @media (max-width: 700px) {
   .zone3-metrics,
   .load-grid,
@@ -603,6 +820,10 @@
   }
   .order-row > div:not(:first-child) {
     display: none;
+  }
+  .order-detail-summary,
+  .order-detail-lines article {
+    grid-template-columns: 1fr;
   }
   .load-card dl {
     grid-template-columns: 1fr 1fr;
@@ -628,5 +849,29 @@
   }
   .order-line-form .icon-action {
     justify-self: end;
+  }
+  .zone3-dialog {
+    display: flex;
+    width: 100vw;
+    height: 100dvh;
+    max-height: 100dvh;
+    flex-direction: column;
+    border-radius: 0;
+  }
+  .zone3-dialog > form {
+    display: flex;
+    height: 100%;
+    flex-direction: column;
+  }
+  .zone3-dialog-body {
+    max-height: none;
+    flex: 1;
+    padding: 16px;
+  }
+  .dialog-footer {
+    padding-bottom: max(14px, env(safe-area-inset-bottom));
+  }
+  .dialog-footer > button {
+    flex: 1;
   }
 }

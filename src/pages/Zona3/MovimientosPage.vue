@@ -1,28 +1,17 @@
 <template>
   <q-page class="page-shell">
     <div class="page-content zone3-page">
-      <header class="page-header stock-transfer-heading">
-        <div>
-          <h1>Movimientos entre almacenes</h1>
-          <p>Traslados internos de stock entre cámaras, depósitos o posiciones.</p>
-        </div>
-        <button class="secondary-action" type="button" @click="openWarehouseTransfer">
-          <Warehouse :size="18" /> Movimiento entre almacenes
-        </button>
-      </header>
+      <PageHeader class="stock-transfer-heading" title="Movimientos entre almacenes" description="Traslados internos de stock entre cámaras, depósitos o posiciones.">
+        <template #actions><button class="secondary-action" type="button" @click="openWarehouseTransfer"><Warehouse :size="18" /> Movimiento entre almacenes</button></template>
+      </PageHeader>
 
-      <section class="data-card zone3-card stock-transfer-history">
-        <q-table
-          v-if="warehouseTransfers.length"
-          flat
-          row-key="id"
-          :rows="warehouseTransfers"
-          :columns="movementColumns"
-          :pagination="{ rowsPerPage: 0 }"
-          hide-pagination
-          class="operation-table"
-        >
-          <template #body="props">
+      <ResponsiveDataTable
+        class="zone3-card stock-transfer-history"
+        :rows="warehouseTransfers"
+        :columns="movementColumns"
+        :mobile-fields="movementCardFields"
+      >
+          <template #desktop-body="props">
             <q-tr :props="props">
               <q-td key="stock" :props="props"
                 ><strong>{{ props.row.stockLabel }}</strong></q-td
@@ -33,13 +22,15 @@
               <q-td key="createdAt" :props="props">{{ dateTime(props.row.createdAt) }}</q-td>
             </q-tr>
           </template>
-        </q-table>
-        <div v-else class="zone3-empty">
+          <template #mobile-leading><span class="document-icon"><Warehouse :size="19" /></span></template>
+          <template #mobile-title="{ row }">{{ row.stockLabel }}</template>
+          <template #mobile-subtitle="{ row }">{{ dateTime(row.createdAt) }}</template>
+          <template #empty><div class="zone3-empty">
           <Warehouse :size="36" />
           <strong>Sin movimientos registrados</strong>
           <span>Usa el botón de la sección para registrar un traslado interno.</span>
-        </div>
-      </section>
+          </div></template>
+      </ResponsiveDataTable>
     </div>
 
     <q-dialog v-model="stockTransferDialog">
@@ -55,7 +46,7 @@
                 >
               </div>
             </div>
-            <button class="icon-action" type="button" @click="stockTransferDialog = false">
+            <button class="icon-action" type="button" aria-label="Cerrar movimiento" @click="stockTransferDialog = false">
               <X :size="20" />
             </button>
           </header>
@@ -127,8 +118,9 @@
 <script setup>
 import { AlertCircle, CheckCircle2, Save, Warehouse, X } from '@lucide/vue'
 import NonNegativeInput from '@/components/NonNegativeInput.vue'
-import { useZona3 } from './useZona3'
-import './Zona3.css'
+import PageHeader from '@/components/PageHeader.vue'
+import ResponsiveDataTable from '@/components/ResponsiveDataTable.vue'
+import { useZona3 } from '@/composables/useZona3'
 
 const {
   movementColumns,
@@ -144,4 +136,10 @@ const {
   openWarehouseTransfer,
   saveWarehouseTransfer,
 } = useZona3()
+
+const movementCardFields = [
+  { label: 'Cantidad', value: (movement) => `${number(movement.quantity)} cajas` },
+  { label: 'Origen', value: (movement) => transferOrigin(movement) },
+  { label: 'Destino', value: (movement) => transferDestination(movement) },
+]
 </script>

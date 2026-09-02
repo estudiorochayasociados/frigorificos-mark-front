@@ -1,15 +1,13 @@
 <template>
   <q-page class="page-shell">
     <div class="page-content">
-      <header class="page-header balanza-form-header">
-        <div>
-          <h1>{{ form.id ? `Registro de ${form.client}` : 'Registrar camión' }}</h1>
-          <p>Alta rápida de ingreso, documentos, pesajes y aves.</p>
-        </div>
-        <button class="secondary-action" type="button" @click="goToList">
-          <X :size="18" /> Cerrar
-        </button>
-      </header>
+      <PageHeader
+        class="balanza-form-header"
+        :title="form.id ? `Registro de ${form.client}` : 'Registrar camión'"
+        description="Alta rápida de ingreso, documentos, pesajes y aves."
+      >
+        <template #actions><button class="secondary-action" type="button" @click="goToList"><X :size="18" /> Cerrar</button></template>
+      </PageHeader>
 
       <q-form class="balanza-form" @submit.prevent="saveTruck">
         <div class="balanza-form-body balanza-form-body--two-cols">
@@ -176,6 +174,7 @@
 </template>
 
 <script setup>
+import PageHeader from '@/components/PageHeader.vue'
 import { computed, reactive } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Save, X } from '@lucide/vue'

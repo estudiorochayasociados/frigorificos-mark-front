@@ -1,0 +1,412 @@
+@media (max-width: 1023px) {
+  .page-content {
+    padding: 28px 20px 94px;
+  }
+
+  .balanza-form-body--two-cols,
+  .balanza-form-body--faena,
+  .load-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .form-grid,
+  .form-grid--dialog,
+  .form-grid--two,
+  .balanza-form-body--two-cols .form-grid--dialog,
+  .balanza-form-body--two-cols .form-grid--two,
+  .balanza-form-body--faena .form-grid--dialog {
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
+  }
+
+  .raw-material-compact {
+    padding: 10px;
+  }
+
+  .raw-material-table,
+  .consumption-table {
+    display: grid;
+    gap: 10px;
+    overflow: visible;
+  }
+
+  .raw-material-table-head,
+  .consumption-table-head {
+    display: none;
+  }
+
+  .raw-material-table-row:not(.raw-material-table-row--total),
+  .consumption-table-row:not(.consumption-table-row--total) {
+    display: grid;
+    min-width: 0;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px 14px;
+    padding: 14px;
+    border: 1px solid var(--line);
+    border-radius: 13px;
+  }
+
+  .raw-material-table-row:not(.raw-material-table-row--total) > div,
+  .consumption-table-row:not(.consumption-table-row--total) > div:first-child {
+    grid-column: 1 / -1;
+  }
+
+  .raw-material-table-row [data-label],
+  .consumption-table-row [data-label] {
+    display: grid;
+    justify-items: start;
+    gap: 3px;
+  }
+
+  .raw-material-table-row [data-label]::before,
+  .consumption-table-row [data-label]::before {
+    content: attr(data-label);
+    color: var(--muted);
+    font-size: 10px;
+    font-weight: 500;
+  }
+
+  .raw-material-table-row--total,
+  .consumption-table-row--total {
+    min-width: 0;
+  }
+
+  .consumption-table-row .consumption-quantity-input {
+    grid-column: 1 / -1;
+    width: 100%;
+  }
+
+  .mass-balance-results--compact,
+  .mass-balance-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.raw-material-table-row--total {
+  background: #fafafa;
+}
+
+.raw-material-table-row--total > div {
+  grid-column: 1 / 6;
+  grid-template-columns: none;
+}
+
+.raw-material-table-row--total > div strong,
+.raw-material-table-row--total > strong {
+  font-size: 13px;
+}
+
+.production-entry-step .production-stage-actions {
+  padding: 12px 0 0;
+  border-top: 0;
+  background: transparent;
+}
+
+@media (max-width: 700px) {
+  .page-content {
+    padding: 22px 14px 90px;
+  }
+
+  .data-card-header {
+    min-height: 0;
+    padding: 12px 16px;
+  }
+
+  .detail-summary-row {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+
+  .detail-sheet-row {
+    grid-template-columns: 92px minmax(0, 1fr);
+  }
+
+  .detail-sheet-row span:nth-of-type(2),
+  .detail-sheet-row strong:nth-of-type(2) {
+    border-top: 1px solid var(--line);
+  }
+
+  .truck-dialog {
+    width: 100%;
+    max-width: none !important;
+    max-height: none;
+    border-radius: 0 !important;
+  }
+
+  .dialog-header,
+  .dialog-footer {
+    padding: 14px;
+  }
+
+  .dialog-body {
+    padding: 0 14px 8px;
+  }
+
+  .step-diagram {
+    grid-template-columns: 1fr;
+    gap: 12px;
+    justify-items: center;
+    padding-top: 14px;
+  }
+
+  .step-connector {
+    width: 2px;
+    height: 28px;
+    justify-self: center;
+  }
+
+  .step-connector::after {
+    top: auto;
+    right: 50%;
+    bottom: -3px;
+    transform: translateX(50%) rotate(135deg);
+  }
+
+  .dialog-footer > button {
+    flex: 1;
+  }
+
+  .balanza-form-header {
+    padding-bottom: 12px;
+  }
+
+  .balanza-form-footer {
+    padding: 10px 0 0;
+  }
+
+  .balanza-form-footer > button {
+    flex: 1;
+  }
+
+  .form-grid,
+  .balanza-form-body--two-cols,
+  .balanza-form-body--faena,
+  .weight-groups {
+    grid-template-columns: 1fr;
+  }
+
+  .balanza-form-body--faena .form-section:last-child {
+    grid-column: auto;
+  }
+
+  .form-grid--dialog,
+  .form-grid--two,
+  .form-grid--compact-two {
+    grid-template-columns: 1fr;
+  }
+
+  .field-span-2 {
+    grid-column: 1 / -1;
+  }
+
+  .calculation-strip {
+    grid-template-columns: 1fr;
+  }
+
+  .calculation-panel {
+    grid-template-columns: 1fr;
+  }
+
+  .calculation-panel > div {
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .calculation-panel > div:last-child {
+    border-bottom: 0;
+  }
+
+  .calculation-strip > div + div {
+    border-top: 1px solid #363636;
+    border-left: 0;
+  }
+
+  .feedback-toast {
+    right: 14px;
+    bottom: 78px;
+    left: 14px;
+    justify-content: center;
+  }
+
+  .production-header-actions,
+  .production-stage-heading,
+  .split-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .production-header-actions .q-field,
+  .production-stage-heading > .q-field,
+  .production-stage-heading > .secondary-action {
+    width: 100%;
+  }
+
+  .production-flow-header {
+    gap: 8px;
+  }
+
+  .production-flow-title h1 {
+    font-size: 20px;
+  }
+
+  .production-back {
+    font-size: 0;
+  }
+
+  .production-steps {
+    margin-top: 10px;
+  }
+
+  .production-steps button {
+    min-height: 56px;
+    gap: 4px;
+    flex-direction: column;
+  }
+
+  .production-steps button small {
+    font-size: 9px;
+  }
+
+  .production-stage-heading {
+    gap: 12px;
+  }
+
+  .raw-material-grid,
+  .closure-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .production-totals {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .raw-material-compact {
+    padding: 10px;
+  }
+
+  .raw-material-table {
+    overflow-x: auto;
+  }
+
+  .raw-material-table-head,
+  .raw-material-table-row {
+    min-width: 0;
+  }
+
+  .production-totals > div:nth-child(2) {
+    border-right: 0;
+  }
+
+  .production-totals > div:nth-child(-n + 2) {
+    border-bottom: 1px solid var(--line);
+  }
+
+  .output-table-head,
+  .output-table-row,
+  .output-table-total {
+    grid-template-columns: 1fr 145px;
+    gap: 8px;
+  }
+
+  .consumption-meter,
+  .consumption-summary,
+  .production-filters,
+  .mass-balance-inputs,
+  .mass-balance-results,
+  .mass-balance-summary {
+    grid-template-columns: 1fr;
+  }
+
+  .consumption-summary > div,
+  .consumption-summary > label {
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .consumption-summary > :last-child {
+    border-bottom: 0;
+  }
+
+  .consumption-table {
+    overflow-x: auto;
+  }
+
+  .consumption-table-head,
+  .consumption-table-row {
+    min-width: 0;
+  }
+
+  .mass-balance-source,
+  .mass-balance-line-results {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .mass-balance-source > div:nth-child(2),
+  .mass-balance-line-results span:nth-child(even) {
+    border-right: 0;
+  }
+
+  .mass-balance-line-results span:nth-child(3n) {
+    border-right: 1px solid var(--line);
+  }
+
+  .mass-balance-finished > div {
+    grid-template-columns: 1fr auto;
+  }
+
+  .mass-balance-finished > div span:first-of-type {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+
+  .consumption-list article {
+    grid-template-columns: 1fr 120px;
+  }
+
+  .consumption-list article > .q-field {
+    grid-column: 1 / -1;
+  }
+
+  .production-stage-actions > button {
+    width: 100%;
+  }
+
+  .history-row {
+    grid-template-columns: 70px 1fr auto 18px;
+    gap: 8px;
+  }
+
+  .history-row > span:nth-child(3) {
+    display: none;
+  }
+
+  .history-detail-metrics,
+  .history-trucks > div {
+    grid-template-columns: 1fr;
+  }
+
+  .history-detail-metrics > div {
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .history-detail-metrics > div:last-child {
+    border-bottom: 0;
+  }
+}
+
+@media (max-width: 1023px) {
+  .primary-action,
+  .secondary-action,
+  .icon-action,
+  .table-action {
+    min-height: 44px;
+  }
+
+  .balanza-form-footer {
+    padding-bottom: max(10px, env(safe-area-inset-bottom));
+  }
+
+  .feedback-toast {
+    bottom: max(78px, calc(env(safe-area-inset-bottom) + 64px));
+  }
+}

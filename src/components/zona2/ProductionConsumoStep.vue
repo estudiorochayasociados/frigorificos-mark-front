@@ -1,5 +1,9 @@
 <template>
   <section class="production-consumption-step">
+    <header class="production-mobile-heading">
+      <span>03</span>
+      <div><h2>Consumo de aves</h2><p>Confirma la asignación FIFO de cada camión.</p></div>
+    </header>
     <div class="consumption-summary">
       <label>
         <span>Aves necesarias</span>
@@ -9,6 +13,7 @@
           :minimum="1"
           outlined
           dense
+          label="Aves a utilizar"
           @update:model-value="$emit('updateRequiredBirds', $event)"
           @change="$emit('applyFifo')"
         />
@@ -33,8 +38,8 @@
             ><small>DTE {{ truck.dte || '-' }} · {{ truck.loteSenasa || 'Sin lote' }}</small>
           </div>
         </div>
-        <span>{{ number(availableForTruck(truck)) }}</span>
-        <span>{{ truckUseOrder(truck.id) }}</span>
+        <span data-label="Disponibles">{{ number(availableForTruck(truck)) }}</span>
+        <span data-label="Orden">{{ truckUseOrder(truck.id) }}</span>
         <NonNegativeInput
           :model-value="production.consumption[truck.id]"
           class="consumption-quantity-input"
