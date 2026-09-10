@@ -24,8 +24,8 @@ export function emptyTruckForm() {
     decomisos: 0,
     decomisosVisc: 0,
     plumas: 0,
-    codigoSn: 'SN-001',
-    loteSenasa: julianLot(),
+    codigoSn: '',
+    loteSenasa: '',
     date: new Date().toISOString(),
     sapCreated: false,
     productionOrder: 0,
@@ -124,10 +124,3 @@ export function createId() {
   return `id-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`
 }
 
-function julianLot() {
-  const now = new Date()
-  const start = new Date(now.getFullYear(), 0, 0)
-  return `${now.getFullYear()}-${Math.floor((now - start) / 86400000)
-    .toString()
-    .padStart(3, '0')}`
-}

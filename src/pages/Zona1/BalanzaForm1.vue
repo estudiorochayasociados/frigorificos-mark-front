@@ -164,21 +164,23 @@
 
         <footer class="balanza-form-footer">
           <button class="secondary-action" type="button" @click="goToList">Cancelar</button>
-          <button class="primary-action" type="submit" :disabled="!isStep1Complete">
+          <button class="primary-action" type="submit" :disabled="cargando || guardando || !isStep1Complete">
             <Save :size="19" /> {{ form.id ? 'Guardar registro' : 'Crear camión' }}
           </button>
         </footer>
       </q-form>
+      <div v-if="error" class="feedback-toast">{{ error }}</div>
     </div>
   </q-page>
 </template>
 
 <script setup>
 import PageHeader from '@/components/PageHeader.vue'
-import { computed, reactive } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Save, X } from '@lucide/vue'
 import NonNegativeInput from '@/components/NonNegativeInput.vue'
+import { useCamiones } from '@/composables/useCamiones'
 import {
   calculateNet,
   calculateTruckMetrics,
@@ -186,21 +188,28 @@ import {
   formatKg,
 } from '@/utils/truckCalculations'
 import {
-  createId,
   emptyTruckForm,
-  loadBalanzaTrucks,
-  nextProductionOrder,
-  saveBalanzaTrucks,
-  truckClassificationKey,
 } from '@/utils/balanza'
 
 const route = useRoute()
 const router = useRouter()
 const form = reactive(emptyTruckForm())
-const trucks = loadBalanzaTrucks()
-const truck = trucks.find((item) => String(item.id) === String(route.params.id))
+const { obtenerCamion, crearCamion, actualizarCamion } = useCamiones()
+const cargando = ref(Boolean(route.params.id))
+const guardando = ref(false)
+const error = ref('')
 
-if (truck) Object.assign(form, { ...truck })
+onMounted(async () => {
+  if (!route.params.id) return
+  try {
+    Object.assign(form, await obtenerCamion(route.params.id))
+  } catch (exception) {
+    error.value = exception.message
+    goToList()
+  } finally {
+    cargando.value = false
+  }
+})
 
 const formMetrics = computed(() => calculateTruckMetrics(form))
 const isStep1Complete = computed(
@@ -212,25 +221,21 @@ const isStep1Complete = computed(
       calculateNet(form.brutoPlanta, form.taraPlanta) > 0),
 )
 
-function saveTruck() {
+async function saveTruck() {
   if (!isStep1Complete.value) return
 
-  const payload = {
-    ...form,
-    id: form.id || createId(),
-    avesOrigen: Number(form.avesOrigen || 0),
-    productionOrder: Number(form.productionOrder || 0) || nextProductionOrder(trucks),
-    status: 'registrado',
-    classification: truckClassificationKey(form),
-    date: form.fechaEntrada
-      ? new Date(`${form.fechaEntrada}T00:00:00`).toISOString()
-      : form.date || new Date().toISOString(),
+  guardando.value = true
+  error.value = ''
+  try {
+    const payload = { ...form, avesOrigen: Number(form.avesOrigen || 0) }
+    if (form.id) await actualizarCamion(form.id, payload)
+    else await crearCamion(payload)
+    goToList()
+  } catch (exception) {
+    error.value = exception.message
+  } finally {
+    guardando.value = false
   }
-  const index = trucks.findIndex((item) => item.id === payload.id)
-  if (index >= 0) trucks[index] = payload
-  else trucks.unshift(payload)
-  saveBalanzaTrucks(trucks)
-  goToList()
 }
 
 function goToList() {

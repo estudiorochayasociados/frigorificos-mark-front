@@ -154,54 +154,62 @@
 
         <footer class="balanza-form-footer">
           <button class="secondary-action" type="button" @click="goToList">Cancelar</button>
-          <button class="primary-action" type="submit"><Save :size="19" /> Guardar faena</button>
+          <button class="primary-action" type="submit" :disabled="cargando || guardando">
+            <Save :size="19" /> Guardar faena
+          </button>
         </footer>
       </q-form>
+      <div v-if="error" class="feedback-toast">{{ error }}</div>
     </div>
   </q-page>
 </template>
 
 <script setup>
 import PageHeader from '@/components/PageHeader.vue'
-import { computed, reactive } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { CalendarDays, Save, X } from '@lucide/vue'
 import NonNegativeInput from '@/components/NonNegativeInput.vue'
+import { useCamiones } from '@/composables/useCamiones'
 import { calculateTruckMetrics, formatKg, formatPercent } from '@/utils/truckCalculations'
-import {
-  emptyTruckForm,
-  loadBalanzaTrucks,
-  saveBalanzaTrucks,
-  truckClassificationKey,
-} from '@/utils/balanza'
+import { emptyTruckForm } from '@/utils/balanza'
 
 const route = useRoute()
 const router = useRouter()
 const form = reactive(emptyTruckForm())
-const trucks = loadBalanzaTrucks()
-const truck = trucks.find((item) => String(item.id) === String(route.params.id))
+const { obtenerCamion, guardarFaena: guardarFaenaApi } = useCamiones()
+const cargando = ref(true)
+const guardando = ref(false)
+const error = ref('')
 
-if (truck)
-  Object.assign(form, {
-    ...truck,
-    fechaSalida: truck.fechaSalida || new Date().toISOString().slice(0, 10),
-  })
-else goToList()
+onMounted(async () => {
+  try {
+    const camion = await obtenerCamion(route.params.id)
+    Object.assign(form, {
+      ...camion,
+      fechaSalida: camion.fechaSalida || new Date().toISOString().slice(0, 10),
+    })
+  } catch (exception) {
+    error.value = exception.message
+    goToList()
+  } finally {
+    cargando.value = false
+  }
+})
 
 const formMetrics = computed(() => calculateTruckMetrics(form))
 
-function saveTruck() {
-  const lineConfirmedAt = new Date().toISOString()
-  const payload = {
-    ...form,
-    lineConfirmedAt,
-    status: 'faeneado',
-    classification: truckClassificationKey(form),
+async function saveTruck() {
+  guardando.value = true
+  error.value = ''
+  try {
+    await guardarFaenaApi(route.params.id, form)
+    goToList()
+  } catch (exception) {
+    error.value = exception.message
+  } finally {
+    guardando.value = false
   }
-  const index = trucks.findIndex((item) => item.id === payload.id)
-  if (index >= 0) trucks[index] = payload
-  saveBalanzaTrucks(trucks)
-  goToList()
 }
 
 function goToList() {

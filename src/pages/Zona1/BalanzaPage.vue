@@ -122,7 +122,7 @@
 </template>
 
 <script setup>
-import { computed, ref, watch } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import {
   ArrowDown,
@@ -137,11 +137,10 @@ import {
 } from '@lucide/vue'
 import PageHeader from '@/components/PageHeader.vue'
 import ResponsiveDataTable from '@/components/ResponsiveDataTable.vue'
+import { useCamiones } from '@/composables/useCamiones'
 import {
   compareProductionOrder,
-  loadBalanzaTrucks,
   productionOrderFor,
-  saveBalanzaTrucks,
   truckClassificationClass,
   truckClassificationLabel,
   truckDate,
@@ -150,7 +149,8 @@ import {
 } from '@/utils/balanza'
 
 const router = useRouter()
-const trucks = ref(loadBalanzaTrucks())
+const { camiones, listarCamiones, eliminarCamion: eliminarCamionApi, ordenarCamiones } = useCamiones()
+const trucks = camiones
 const draggedTruckId = ref(null)
 const feedback = ref('')
 const selectedTruckId = ref('')
@@ -173,7 +173,13 @@ const truckCardFields = [
   { label: 'DTE', value: (truck) => truck.dte || 'Sin DTE' },
 ]
 
-watch(trucks, (nextTrucks) => saveBalanzaTrucks(nextTrucks), { deep: true })
+onMounted(async () => {
+  try {
+    await listarCamiones()
+  } catch (error) {
+    showFeedback(error.message)
+  }
+})
 
 function productionOrderForTruck(truck) {
   return productionOrderFor(trucks.value, truck)
@@ -200,13 +206,20 @@ function goToTruckFaena(truck) {
   router.push({ name: 'balanza-form2', params: { id: String(truck.id) } })
 }
 
-function deleteTruck(truck) {
+async function deleteTruck(truck) {
   if (!window.confirm(`Eliminar el camión de ${truck.client}?`)) return
 
-  trucks.value = orderedTrucks.value
-    .filter((item) => item.id !== truck.id)
-    .map((item, index) => ({ ...item, productionOrder: index + 1 }))
-  showFeedback('Camión eliminado correctamente')
+  try {
+    await eliminarCamionApi(truck.id)
+    const remaining = orderedTrucks.value
+      .filter((item) => item.id !== truck.id)
+      .map((item, index) => ({ ...item, productionOrder: index + 1 }))
+    trucks.value = remaining
+    if (remaining.length) await ordenarCamiones(remaining.map((item) => item.id))
+    showFeedback('Camión eliminado correctamente')
+  } catch (error) {
+    showFeedback(error.message)
+  }
 }
 
 function startTruckDrag(truck, event) {
@@ -215,7 +228,7 @@ function startTruckDrag(truck, event) {
   event.dataTransfer.setData('text/plain', truck.id)
 }
 
-function dropTruck(targetTruck) {
+async function dropTruck(targetTruck) {
   const draggedId = draggedTruckId.value
   if (!draggedId || draggedId === targetTruck.id) return endTruckDrag()
 
@@ -226,7 +239,14 @@ function dropTruck(targetTruck) {
 
   const [draggedTruck] = reorderedTrucks.splice(fromIndex, 1)
   reorderedTrucks.splice(toIndex, 0, draggedTruck)
-  trucks.value = reorderedTrucks.map((truck, index) => ({ ...truck, productionOrder: index + 1 }))
+  const reordered = reorderedTrucks.map((truck, index) => ({ ...truck, productionOrder: index + 1 }))
+  trucks.value = reordered
+  try {
+    await ordenarCamiones(reordered.map((truck) => truck.id))
+  } catch (error) {
+    showFeedback(error.message)
+    await listarCamiones()
+  }
   endTruckDrag()
 }
 
@@ -234,14 +254,21 @@ function endTruckDrag() {
   draggedTruckId.value = null
 }
 
-function moveTruck(truck, offset) {
+async function moveTruck(truck, offset) {
   const reorderedTrucks = [...orderedTrucks.value]
   const fromIndex = reorderedTrucks.findIndex((item) => item.id === truck.id)
   const toIndex = fromIndex + offset
   if (fromIndex < 0 || toIndex < 0 || toIndex >= reorderedTrucks.length) return
   const [movedTruck] = reorderedTrucks.splice(fromIndex, 1)
   reorderedTrucks.splice(toIndex, 0, movedTruck)
-  trucks.value = reorderedTrucks.map((item, index) => ({ ...item, productionOrder: index + 1 }))
+  const reordered = reorderedTrucks.map((item, index) => ({ ...item, productionOrder: index + 1 }))
+  trucks.value = reordered
+  try {
+    await ordenarCamiones(reordered.map((item) => item.id))
+  } catch (error) {
+    showFeedback(error.message)
+    await listarCamiones()
+  }
 }
 
 function showFeedback(message) {

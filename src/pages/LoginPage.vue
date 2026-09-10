@@ -20,7 +20,8 @@
           label="Contraseña"
           autocomplete="current-password"
         />
-        <button class="primary-action full-width" type="submit">
+        <p v-if="error" class="login-error">{{ error }}</p>
+        <button class="primary-action full-width" type="submit" :disabled="loading">
           Entrar <ArrowRight :size="17" />
         </button>
       </q-form>
@@ -32,14 +33,28 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ArrowRight, LockKeyhole } from '@lucide/vue'
+import { iniciarSesion } from '@/services/api'
 
 const authTokenKey = 'mark-auth-token'
+const accountKey = 'mark-auth-account'
 const router = useRouter()
-const email = ref('demo@mark.local')
-const password = ref('demo')
+const email = ref('')
+const password = ref('')
+const loading = ref(false)
+const error = ref('')
 
-function login() {
-  localStorage.setItem(authTokenKey, `demo-token-${Date.now()}`)
-  router.replace('/balanza')
+async function login() {
+  loading.value = true
+  error.value = ''
+  try {
+    const session = await iniciarSesion(email.value, password.value)
+    localStorage.setItem(authTokenKey, session.token)
+    localStorage.setItem(accountKey, JSON.stringify(session.cuenta))
+    router.replace('/balanza')
+  } catch (exception) {
+    error.value = exception.message
+  } finally {
+    loading.value = false
+  }
 }
 </script>
