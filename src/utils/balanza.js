@@ -13,6 +13,7 @@ export function emptyTruckForm() {
     horarioLlegada: '',
     brutoOrigen: 0,
     taraOrigen: 0,
+    brutoReal: 0,
     brutoPlanta: 0,
     taraPlanta: 0,
     avesOrigen: 0,

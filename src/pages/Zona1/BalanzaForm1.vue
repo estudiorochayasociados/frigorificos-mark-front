@@ -95,7 +95,7 @@
             <div class="form-grid form-grid--two">
               <NonNegativeInput
                 v-model="form.brutoOrigen"
-                label="Peso bruto origen"
+                label="Peso bruto granja"
                 suffix="kg"
                 outlined
                 dense
@@ -103,7 +103,15 @@
               />
               <NonNegativeInput
                 v-model="form.taraOrigen"
-                label="Tara origen"
+                label="Tara granja"
+                suffix="kg"
+                outlined
+                dense
+                class="field-control"
+              />
+              <NonNegativeInput
+                v-model="form.brutoReal"
+                label="Peso bruto real"
                 suffix="kg"
                 outlined
                 dense
@@ -119,7 +127,7 @@
               />
               <NonNegativeInput
                 v-model="form.taraPlanta"
-                label="Tara planta"
+                label="Tara de entrada"
                 suffix="kg"
                 outlined
                 dense
@@ -147,16 +155,28 @@
             </div>
             <div class="calculation-panel">
               <div>
-                <span>Neto origen</span><strong>{{ kg(formMetrics.netoOrigen) }}</strong>
+                <span>Neto granja</span><strong>{{ kg(formMetrics.netoGranja) }}</strong>
+              </div>
+              <div>
+                <span>Neto real</span><strong>{{ kg(formMetrics.netoReal) }}</strong>
               </div>
               <div>
                 <span>Neto planta</span><strong>{{ kg(formMetrics.netoPlanta) }}</strong>
               </div>
               <div>
-                <span>Diferencia neta</span><strong>{{ kg(formMetrics.diferenciaNeta) }}</strong>
+                <span>Dif. planta - granja</span><strong>{{ kg(formMetrics.diferenciaNetaGranjaPlanta) }}</strong>
               </div>
               <div>
-                <span>Peso promedio</span><strong>{{ avg(formMetrics.promedio) }}</strong>
+                <span>Dif. planta - real</span><strong>{{ kg(formMetrics.diferenciaNetaRealPlanta) }}</strong>
+              </div>
+              <div>
+                <span>Promedio granja</span><strong>{{ avg(formMetrics.promedioGranja) }}</strong>
+              </div>
+              <div>
+                <span>Promedio real</span><strong>{{ avg(formMetrics.promedioReal) }}</strong>
+              </div>
+              <div>
+                <span>Promedio planta</span><strong>{{ avg(formMetrics.promedioPlanta) }}</strong>
               </div>
             </div>
           </section>
@@ -218,6 +238,7 @@ const isStep1Complete = computed(
     Boolean(form.chasis?.trim()) &&
     Number(form.avesOrigen || 0) > 0 &&
     (calculateNet(form.brutoOrigen, form.taraOrigen) > 0 ||
+      calculateNet(form.brutoReal, form.taraPlanta) > 0 ||
       calculateNet(form.brutoPlanta, form.taraPlanta) > 0),
 )
 
