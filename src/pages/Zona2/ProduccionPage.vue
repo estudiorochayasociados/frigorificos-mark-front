@@ -77,7 +77,10 @@
 
     <div v-else class="page-content production-page">
       <template v-if="showMassBalance">
-        <PageHeader title="Balance de masa" description="Balance diario generado desde Balanza y Producción, con detalle por lote de entrada.">
+        <PageHeader
+          title="Balance de masa"
+          description="Balance diario generado desde Balanza y Producción, con detalle por lote de entrada."
+        >
           <template #actions>
             <button
               v-if="!selectedMassBalance"
@@ -148,7 +151,8 @@
                   <span>Muertos</span><strong>{{ number(line.source.muertos) }}</strong>
                 </div>
                 <div>
-                  <span>Decomisos</span><strong>{{ number(line.source.decomisos) }}</strong>
+                  <span>Decomisos + vísc.</span
+                  ><strong>{{ number(confiscationsFor(line.source)) }}</strong>
                 </div>
                 <div>
                   <span>Consumo Zona 2</span><strong>{{ number(line.birdsToProcess) }}</strong>
@@ -254,8 +258,15 @@
       </template>
 
       <template v-else-if="showHistory">
-        <PageHeader title="Historial de producción" description="Trazabilidad completa de entradas, consumos y producto terminado.">
-          <template #actions><button class="secondary-action" type="button" @click="goToDashboard"><ArrowLeft :size="17" /> Producciones del día</button></template>
+        <PageHeader
+          title="Historial de producción"
+          description="Trazabilidad completa de entradas, consumos y producto terminado."
+        >
+          <template #actions
+            ><button class="secondary-action" type="button" @click="goToDashboard">
+              <ArrowLeft :size="17" /> Producciones del día
+            </button></template
+          >
         </PageHeader>
 
         <section class="production-filters">
@@ -309,7 +320,11 @@
       </template>
 
       <template v-else>
-        <PageHeader class="production-day-header" title="Producciones del día" description="Datos recibidos automáticamente desde Balanza." />
+        <PageHeader
+          class="production-day-header"
+          title="Producciones del día"
+          description="Datos recibidos automáticamente desde Balanza."
+        />
 
         <ResponsiveDataTable
           class="production-list-card"
@@ -320,44 +335,51 @@
           clickable
           @select="openProduction"
         >
-            <template #desktop-body="props">
-              <q-tr :props="props" @click="openProduction(props.row)">
-                <q-td key="brand" :props="props">
-                  <div class="client-cell">
-                    <span class="truck-avatar"><Truck :size="19" /></span>
-                    <div>
-                      <strong>{{ props.row.brand }}</strong>
-                    </div>
+          <template #desktop-body="props">
+            <q-tr :props="props" @click="openProduction(props.row)">
+              <q-td key="brand" :props="props">
+                <div class="client-cell">
+                  <span class="truck-avatar"><Truck :size="19" /></span>
+                  <div>
+                    <strong>{{ props.row.brand }}</strong>
                   </div>
-                </q-td>
-                <q-td key="trucks" :props="props">
-                  <div class="production-truck-counts">
-                    <strong>{{ number(props.row.trucks.length) }} total</strong>
-                    <small
-                      >{{ number(whiteTruckCount(props.row)) }} blancos ·
-                      {{ number(blackTruckCount(props.row)) }} negros</small
-                    >
-                  </div>
-                </q-td>
-                <q-td key="processStatus" :props="props">
-                  <span :class="['status-pill', processStatusClass(props.row)]">
-                    {{ processStatusLabel(props.row) }}
-                  </span>
-                </q-td>
-              </q-tr>
-            </template>
-            <template #mobile-leading><span class="truck-avatar"><Truck :size="19" /></span></template>
-            <template #mobile-title="{ row }">{{ row.brand }}</template>
-            <template #mobile-subtitle>Marca comercial</template>
-            <template #mobile-status="{ row }"><span :class="['status-pill', processStatusClass(row)]">{{ processStatusLabel(row) }}</span></template>
-            <template #empty><div class="production-empty">
-            <Truck :size="36" />
-            <strong>No hay camiones disponibles</strong>
-            <span>Los ingresos aparecerán aquí cuando Zona 1 los registre en Balanza.</span>
-            </div></template>
+                </div>
+              </q-td>
+              <q-td key="trucks" :props="props">
+                <div class="production-truck-counts">
+                  <strong>{{ number(props.row.trucks.length) }} total</strong>
+                  <small
+                    >{{ number(whiteTruckCount(props.row)) }} Via 1 ·
+                    {{ number(blackTruckCount(props.row)) }} Via 2</small
+                  >
+                </div>
+              </q-td>
+              <q-td key="processStatus" :props="props">
+                <span :class="['status-pill', processStatusClass(props.row)]">
+                  {{ processStatusLabel(props.row) }}
+                </span>
+              </q-td>
+            </q-tr>
+          </template>
+          <template #mobile-leading
+            ><span class="truck-avatar"><Truck :size="19" /></span
+          ></template>
+          <template #mobile-title="{ row }">{{ row.brand }}</template>
+          <template #mobile-subtitle>Marca comercial</template>
+          <template #mobile-status="{ row }"
+            ><span :class="['status-pill', processStatusClass(row)]">{{
+              processStatusLabel(row)
+            }}</span></template
+          >
+          <template #empty
+            ><div class="production-empty">
+              <Truck :size="36" />
+              <strong>No hay camiones disponibles</strong>
+              <span>Los ingresos aparecerán aquí cuando Zona 1 los registre en Balanza.</span>
+            </div></template
+          >
         </ResponsiveDataTable>
       </template>
-
     </div>
 
     <div v-if="feedback.message" :class="['feedback-toast', `feedback-toast--${feedback.type}`]">
@@ -396,6 +418,7 @@ import {
   totalOutputBoxes,
   truckAvailableBirds,
   truckBirds,
+  truckConfiscations,
 } from '@/utils/production'
 
 const trucksKey = 'mark-frigorifico-operacion-v2'
@@ -422,12 +445,17 @@ const historyStatusOptions = [
 const productionColumns = [
   { name: 'brand', label: 'Marca', field: 'brand', align: 'left' },
   { name: 'trucks', label: 'Camiones', field: (row) => row.trucks.length, align: 'left' },
-  { name: 'processStatus', label: 'Estado', field: (row) => processStatusLabel(row), align: 'left' },
+  {
+    name: 'processStatus',
+    label: 'Estado',
+    field: (row) => processStatusLabel(row),
+    align: 'left',
+  },
 ]
 const productionCardFields = [
   { label: 'Camiones', value: (group) => number(group.trucks.length) },
-  { label: 'Blancos', value: (group) => number(whiteTruckCount(group)) },
-  { label: 'Negros', value: (group) => number(blackTruckCount(group)) },
+  { label: 'Via 1', value: (group) => number(whiteTruckCount(group)) },
+  { label: 'Via 2', value: (group) => number(blackTruckCount(group)) },
 ]
 
 const showHistory = computed(() => false)
@@ -490,7 +518,11 @@ const balanceLines = computed(() =>
       record: line,
       source,
       birdsToProcess,
-      metrics: calculateBalanceLine({ ...line, birdsToProcess, decomisos: source?.decomisos }),
+      metrics: calculateBalanceLine({
+        ...line,
+        birdsToProcess,
+        decomisos: confiscationsFor(source),
+      }),
     }
   }),
 )
@@ -768,7 +800,7 @@ function birdsFor(truck) {
   return truckBirds(truck)
 }
 function confiscationsFor(truck) {
-  return Math.max(0, Number(truck.decomisos || 0))
+  return truckConfiscations(truck)
 }
 function totalBoxes(outputs) {
   return totalOutputBoxes(outputs)
@@ -800,7 +832,11 @@ function processStatusClass(group) {
   const production = productionFor(group)
   if (production?.status === 'completed') return 'status-success'
   const step = production ? nextStepFor(production) : 'ingreso'
-  return step === 'ingreso' ? 'status-warning' : step === 'cierre' ? 'status-success' : 'status-active'
+  return step === 'ingreso'
+    ? 'status-warning'
+    : step === 'cierre'
+      ? 'status-success'
+      : 'status-active'
 }
 function initials(value) {
   return String(value || '')

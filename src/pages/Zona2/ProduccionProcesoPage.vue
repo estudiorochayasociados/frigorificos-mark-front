@@ -10,7 +10,10 @@
             <span class="truck-avatar"><Truck :size="19" /></span>
             <div>
               <h1>{{ activeProduction.brand }}</h1>
-              <small>Paso {{ currentStepMeta.number }} de {{ flowSteps.length }} · {{ currentStepMeta.label }}</small>
+              <small
+                >Paso {{ currentStepMeta.number }} de {{ flowSteps.length }} ·
+                {{ currentStepMeta.label }}</small
+              >
             </div>
           </div>
         </header>
@@ -113,6 +116,7 @@ import {
   totalOutputBoxes,
   truckAvailableBirds,
   truckBirds,
+  truckConfiscations,
 } from '@/utils/production'
 
 const trucksKey = 'mark-frigorifico-operacion-v2'
@@ -153,7 +157,9 @@ const activeTrucks = computed(() => {
     .filter(Boolean)
     .sort((left, right) => truckUseOrder(left.id) - truckUseOrder(right.id))
 })
-const priorConsumption = computed(() => consumedByTruck(productions.value, activeProduction.value?.id))
+const priorConsumption = computed(() =>
+  consumedByTruck(productions.value, activeProduction.value?.id),
+)
 const activeTotals = computed(() => totalsFor(activeTrucks.value))
 const selectedConsumption = computed(() =>
   Object.values(activeProduction.value?.consumption || {}).reduce(
@@ -198,7 +204,8 @@ function normalizeProduction(production) {
       ),
     events: production.events || [],
     truckSnapshots: production.truckSnapshots || {},
-    finished: production.finished || defaultFinished(production.date || today, production.brand || ''),
+    finished:
+      production.finished || defaultFinished(production.date || today, production.brand || ''),
   }
 }
 
@@ -432,7 +439,7 @@ function birdsFor(truck) {
 }
 
 function confiscationsFor(truck) {
-  return Math.max(0, Number(truck.decomisos || 0))
+  return truckConfiscations(truck)
 }
 
 function totalBoxes(outputs) {

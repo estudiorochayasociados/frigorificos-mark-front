@@ -4,12 +4,12 @@ export function truckBirds(truck) {
   return Math.max(0, Number(truck?.avesOrigen || truck?.avesDte || 0))
 }
 
+export function truckConfiscations(truck) {
+  return Math.max(0, Number(truck?.decomisos || 0)) + Math.max(0, Number(truck?.decomisosVisc || 0))
+}
+
 export function truckLosses(truck) {
-  return (
-    Math.max(0, Number(truck?.muertos || 0)) +
-    Math.max(0, Number(truck?.decomisos || 0)) +
-    Math.max(0, Number(truck?.decomisosVisc || 0))
-  )
+  return Math.max(0, Number(truck?.muertos || 0)) + truckConfiscations(truck)
 }
 
 export function truckAvailableBirds(truck) {

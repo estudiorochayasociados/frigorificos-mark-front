@@ -6,7 +6,11 @@
         :title="`Faena de ${form.client}`"
         description="Carga rápida de horarios, novedades y resultados de línea."
       >
-        <template #actions><button class="secondary-action" type="button" @click="goToList"><X :size="18" /> Cerrar</button></template>
+        <template #actions
+          ><button class="secondary-action" type="button" @click="goToList">
+            <X :size="18" /> Cerrar
+          </button></template
+        >
       </PageHeader>
 
       <q-form class="balanza-form" @submit.prevent="saveTruck">
@@ -137,7 +141,7 @@
                 <span>Kg muertos</span><strong>{{ kg(formMetrics.kgMuertos) }}</strong>
               </div>
               <div>
-                <span>Kg decom.</span><strong>{{ kg(formMetrics.kgDecomisados) }}</strong>
+                <span>Kg decom. + vísc.</span><strong>{{ kg(formMetrics.kgDecomisados) }}</strong>
               </div>
               <div>
                 <span>% merma</span><strong>{{ pct(formMetrics.porcentajeMerma) }}</strong>
@@ -146,7 +150,8 @@
                 <span>% muertos</span><strong>{{ pct(formMetrics.porcentajeMuertos) }}</strong>
               </div>
               <div>
-                <span>% decom.</span><strong>{{ pct(formMetrics.porcentajeDecomisados) }}</strong>
+                <span>% decom. + vísc.</span
+                ><strong>{{ pct(formMetrics.porcentajeDecomisados) }}</strong>
               </div>
             </div>
           </section>
@@ -159,7 +164,7 @@
           </button>
         </footer>
       </q-form>
-      <div v-if="error" class="feedback-toast">{{ error }}</div>
+      <div v-if="error" class="feedback-toast feedback-toast--error">{{ error }}</div>
     </div>
   </q-page>
 </template>

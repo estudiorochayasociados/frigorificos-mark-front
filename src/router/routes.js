@@ -10,6 +10,15 @@ const routes = [
     meta: { requiresAuth: true },
     children: [
       { path: 'balanza', component: () => import('@/pages/Zona1/BalanzaPage.vue') },
+      {
+        path: 'marcas-comerciales',
+        component: () => import('@/pages/Zona1/MarcasComercialesPage.vue'),
+      },
+      {
+        path: 'usuarios',
+        component: () => import('@/pages/Zona1/UsuariosPage.vue'),
+        meta: { requiresAdmin: true },
+      },
       { path: 'balanza/form1', component: () => import('@/pages/Zona1/BalanzaForm1.vue') },
       {
         path: 'balanza/form1/:id',

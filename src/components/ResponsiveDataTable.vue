@@ -53,7 +53,9 @@
         </article>
       </div>
     </template>
-    <slot v-else name="empty" />
+    <slot v-else name="empty"
+      ><div class="responsive-data-table__empty">No hay datos para mostrar.</div></slot
+    >
   </section>
 </template>
 
@@ -91,6 +93,12 @@ function selectRow(row) {
   display: grid;
   gap: 10px;
   padding: 12px;
+}
+
+.responsive-data-table__empty {
+  padding: 36px 20px;
+  color: var(--muted);
+  text-align: center;
 }
 
 .responsive-data-card {

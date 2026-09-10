@@ -11,7 +11,7 @@
       </div>
 
       <q-form class="login-form" @submit.prevent="login">
-        <q-input v-model="email" outlined dense label="Usuario" autocomplete="username" />
+        <q-input v-model="email" outlined dense type="email" label="Correo" autocomplete="email" />
         <q-input
           v-model="password"
           outlined

@@ -77,7 +77,10 @@
 
     <div v-else class="page-content production-page">
       <template v-if="showMassBalance">
-        <PageHeader title="Balance de masa" description="Balance diario generado desde Balanza y Producción, con detalle por lote de entrada.">
+        <PageHeader
+          title="Balance de masa"
+          description="Balance diario generado desde Balanza y Producción, con detalle por lote de entrada."
+        >
           <template #actions>
             <button
               v-if="!selectedMassBalance"
@@ -157,14 +160,29 @@
             <AlertCircle :size="18" /><span>{{ balanceValidation.message }}</span>
           </div>
           <div class="mass-balance-results mass-balance-results--compact">
-            <article><span>Entrada</span><strong>{{ decimal(balanceTotals.inputKg) }} kg</strong></article>
-            <article><span>Absorción</span><strong>{{ decimal(balanceTotals.absorptionKg) }} kg</strong></article>
-            <article><span>Subproductos</span><strong>{{ decimal(balanceTotals.byproductsKg) }} kg</strong></article>
-            <article><span>Decomiso</span><strong>{{ decimal(balanceTotals.confiscationKg) }} kg</strong></article>
-            <article><span>Salida rinde</span><strong>{{ decimal(balanceTotals.yieldOutputKg) }} kg</strong></article>
-            <article><span>Salida balance</span><strong>{{ decimal(balanceTotals.balanceOutputKg) }} kg</strong></article>
+            <article>
+              <span>Entrada</span><strong>{{ decimal(balanceTotals.inputKg) }} kg</strong>
+            </article>
+            <article>
+              <span>Absorción</span><strong>{{ decimal(balanceTotals.absorptionKg) }} kg</strong>
+            </article>
+            <article>
+              <span>Subproductos</span><strong>{{ decimal(balanceTotals.byproductsKg) }} kg</strong>
+            </article>
+            <article>
+              <span>Decomiso</span><strong>{{ decimal(balanceTotals.confiscationKg) }} kg</strong>
+            </article>
+            <article>
+              <span>Salida rinde</span
+              ><strong>{{ decimal(balanceTotals.yieldOutputKg) }} kg</strong>
+            </article>
+            <article>
+              <span>Salida balance</span
+              ><strong>{{ decimal(balanceTotals.balanceOutputKg) }} kg</strong>
+            </article>
             <article :class="{ 'mass-balance-difference': balanceTotals.differenceKg !== 0 }">
-              <span>Diferencia</span><strong>{{ signedDecimal(balanceTotals.differenceKg) }} kg</strong>
+              <span>Diferencia</span
+              ><strong>{{ signedDecimal(balanceTotals.differenceKg) }} kg</strong>
             </article>
           </div>
         </section>
@@ -178,10 +196,15 @@
           </div>
           <div class="mass-balance-trace-table gt-sm">
             <div class="mass-balance-trace-head">
-              <span>Lote</span><span>DTE</span><span>Camión</span><span>Aves DTE</span><span>A faenar</span
-              ><span>Peso prom.</span><span>Kg entrada</span><span>Muertos</span><span>Decomisos</span>
+              <span>Lote</span><span>DTE</span><span>Camión</span><span>Aves DTE</span
+              ><span>A faenar</span><span>Peso prom.</span><span>Kg entrada</span
+              ><span>Muertos</span><span>Decomisos + vísc.</span>
             </div>
-            <div v-for="line in balanceLines" :key="line.record.truckId" class="mass-balance-trace-row">
+            <div
+              v-for="line in balanceLines"
+              :key="line.record.truckId"
+              class="mass-balance-trace-row"
+            >
               <strong>{{ line.source.loteSenasa || '-' }}</strong>
               <span>{{ line.source.dte || '-' }}</span>
               <span>{{ line.source.chasis || '-' }}</span>
@@ -190,7 +213,7 @@
               <span>{{ decimal(line.averagePlantWeight) }} kg</span>
               <strong>{{ decimal(line.inputKg) }} kg</strong>
               <span>{{ number(line.source.muertos) }}</span>
-              <span>{{ number(line.source.decomisos) }}</span>
+              <span>{{ number(confiscationsFor(line.source)) }}</span>
             </div>
           </div>
           <ResponsiveDataTable
@@ -200,9 +223,13 @@
             :row-key="(line) => line.record.truckId"
             :mobile-fields="balanceTraceCardFields"
           >
-            <template #mobile-leading><span class="truck-avatar"><Truck :size="18" /></span></template>
+            <template #mobile-leading
+              ><span class="truck-avatar"><Truck :size="18" /></span
+            ></template>
             <template #mobile-title="{ row }">Lote {{ row.source.loteSenasa || '-' }}</template>
-            <template #mobile-subtitle="{ row }">DTE {{ row.source.dte || '-' }} · {{ row.source.chasis || 'Sin patente' }}</template>
+            <template #mobile-subtitle="{ row }"
+              >DTE {{ row.source.dte || '-' }} · {{ row.source.chasis || 'Sin patente' }}</template
+            >
           </ResponsiveDataTable>
         </section>
 
@@ -220,8 +247,15 @@
       </template>
 
       <template v-else-if="showHistory">
-        <PageHeader title="Historial de producción" description="Trazabilidad completa de entradas, consumos y producto terminado.">
-          <template #actions><button class="secondary-action" type="button" @click="goToDashboard"><ArrowLeft :size="17" /> Producciones del día</button></template>
+        <PageHeader
+          title="Historial de producción"
+          description="Trazabilidad completa de entradas, consumos y producto terminado."
+        >
+          <template #actions
+            ><button class="secondary-action" type="button" @click="goToDashboard">
+              <ArrowLeft :size="17" /> Producciones del día
+            </button></template
+          >
         </PageHeader>
 
         <section class="production-filters">
@@ -275,7 +309,11 @@
       </template>
 
       <template v-else>
-        <PageHeader class="production-day-header" title="Producciones del día" description="Datos recibidos automáticamente desde Balanza." />
+        <PageHeader
+          class="production-day-header"
+          title="Producciones del día"
+          description="Datos recibidos automáticamente desde Balanza."
+        />
 
         <ResponsiveDataTable
           class="production-list-card"
@@ -286,36 +324,39 @@
           clickable
           @select="openProduction"
         >
-            <template #desktop-body="props">
-              <q-tr :props="props" @click="openProduction(props.row)">
-                <q-td key="brand" :props="props">
-                  <div class="client-cell">
-                    <span class="truck-avatar"><Truck :size="19" /></span>
-                    <div>
-                      <strong>{{ props.row.brand }}</strong
-                      ><small>Marca comercial</small>
-                    </div>
+          <template #desktop-body="props">
+            <q-tr :props="props" @click="openProduction(props.row)">
+              <q-td key="brand" :props="props">
+                <div class="client-cell">
+                  <span class="truck-avatar"><Truck :size="19" /></span>
+                  <div>
+                    <strong>{{ props.row.brand }}</strong
+                    ><small>Marca comercial</small>
                   </div>
-                </q-td>
-                <q-td key="blackTrucks" :props="props">
-                  {{ number(blackTruckCount(props.row)) }}
-                </q-td>
-                <q-td key="whiteTrucks" :props="props">
-                  {{ number(whiteTruckCount(props.row)) }}
-                </q-td>
-              </q-tr>
-            </template>
-            <template #mobile-leading><span class="truck-avatar"><Truck :size="19" /></span></template>
-            <template #mobile-title="{ row }">{{ row.brand }}</template>
-            <template #mobile-subtitle>Marca comercial</template>
-            <template #empty><div class="production-empty">
-            <Truck :size="36" />
-            <strong>No hay camiones disponibles</strong>
-            <span>Los ingresos aparecerán aquí cuando Zona 1 los registre en Balanza.</span>
-            </div></template>
+                </div>
+              </q-td>
+              <q-td key="blackTrucks" :props="props">
+                {{ number(blackTruckCount(props.row)) }}
+              </q-td>
+              <q-td key="whiteTrucks" :props="props">
+                {{ number(whiteTruckCount(props.row)) }}
+              </q-td>
+            </q-tr>
+          </template>
+          <template #mobile-leading
+            ><span class="truck-avatar"><Truck :size="19" /></span
+          ></template>
+          <template #mobile-title="{ row }">{{ row.brand }}</template>
+          <template #mobile-subtitle>Marca comercial</template>
+          <template #empty
+            ><div class="production-empty">
+              <Truck :size="36" />
+              <strong>No hay camiones disponibles</strong>
+              <span>Los ingresos aparecerán aquí cuando Zona 1 los registre en Balanza.</span>
+            </div></template
+          >
         </ResponsiveDataTable>
       </template>
-
     </div>
 
     <div v-if="feedback.message" :class="['feedback-toast', `feedback-toast--${feedback.type}`]">
@@ -354,6 +395,7 @@ import {
   totalOutputBoxes,
   truckAvailableBirds,
   truckBirds,
+  truckConfiscations,
 } from '@/utils/production'
 
 const trucksKey = 'mark-frigorifico-operacion-v2'
@@ -379,12 +421,22 @@ const historyStatusOptions = [
 ]
 const productionColumns = [
   { name: 'brand', label: 'Marca comercial', field: 'brand', align: 'left' },
-  { name: 'blackTrucks', label: 'Camiones negros', field: (row) => blackTruckCount(row), align: 'left' },
-  { name: 'whiteTrucks', label: 'Camiones blancos', field: (row) => whiteTruckCount(row), align: 'left' },
+  {
+    name: 'blackTrucks',
+    label: 'Camiones Via 2',
+    field: (row) => blackTruckCount(row),
+    align: 'left',
+  },
+  {
+    name: 'whiteTrucks',
+    label: 'Camiones Via 1',
+    field: (row) => whiteTruckCount(row),
+    align: 'left',
+  },
 ]
 const productionCardFields = [
-  { label: 'Camiones blancos', value: (group) => number(whiteTruckCount(group)) },
-  { label: 'Camiones negros', value: (group) => number(blackTruckCount(group)) },
+  { label: 'Camiones Via 1', value: (group) => number(whiteTruckCount(group)) },
+  { label: 'Camiones Via 2', value: (group) => number(blackTruckCount(group)) },
 ]
 const balanceTraceColumns = [
   { name: 'lot', label: 'Lote', field: (line) => line.source.loteSenasa, align: 'left' },
@@ -395,7 +447,7 @@ const balanceTraceCardFields = [
   { label: 'Peso promedio', value: (line) => `${decimal(line.averagePlantWeight)} kg` },
   { label: 'Kg entrada', value: (line) => `${decimal(line.inputKg)} kg` },
   { label: 'Muertos', value: (line) => number(line.source.muertos) },
-  { label: 'Decomisos', value: (line) => number(line.source.decomisos) },
+  { label: 'Decomisos + vísc.', value: (line) => number(confiscationsFor(line.source)) },
 ]
 
 const showHistory = computed(() => false)
@@ -465,7 +517,7 @@ const balanceLines = computed(() =>
       plantNetKg,
       averagePlantWeight,
       inputKg: birdsToProcess * averagePlantWeight,
-      confiscationKg: nonNegative(source?.decomisos) * averagePlantWeight,
+      confiscationKg: confiscationsFor(source) * averagePlantWeight,
     }
   }),
 )
@@ -474,10 +526,7 @@ const balanceTotals = computed(() => {
     (total, line) => total + nonNegative(line.birdsToProcess),
     0,
   )
-  const inputKg = balanceLines.value.reduce(
-    (total, line) => total + nonNegative(line.inputKg),
-    0,
-  )
+  const inputKg = balanceLines.value.reduce((total, line) => total + nonNegative(line.inputKg), 0)
   const confiscationKg = balanceLines.value.reduce(
     (total, line) => total + nonNegative(line.confiscationKg),
     0,
@@ -495,16 +544,20 @@ const balanceValidation = computed(() => {
   const missingPlantWeight = balanceLines.value.filter(
     (line) => truckBirds(line.source) > 0 && line.plantNetKg <= 0,
   )
-  const missingParameters = ['yieldPercent', 'absorptionPercent', 'visceraPercent', 'featherPercent'].some(
-    (field) => selectedMassBalance.value?.general?.[field] == null,
-  )
+  const missingParameters = [
+    'yieldPercent',
+    'absorptionPercent',
+    'visceraPercent',
+    'featherPercent',
+  ].some((field) => selectedMassBalance.value?.general?.[field] == null)
   if (missingPlantWeight.length)
     return {
       message: 'Falta registrar el peso bruto y la tara de Planta en uno o más camiones.',
     }
   if (missingParameters)
     return {
-      message: 'Completa los parámetros generales reales antes de tomar el balance como definitivo.',
+      message:
+        'Completa los parámetros generales reales antes de tomar el balance como definitivo.',
     }
   return { message: '' }
 })
@@ -801,7 +854,7 @@ function birdsFor(truck) {
   return truckBirds(truck)
 }
 function confiscationsFor(truck) {
-  return Math.max(0, Number(truck.decomisos || 0))
+  return truckConfiscations(truck)
 }
 function totalBoxes(outputs) {
   return totalOutputBoxes(outputs)

@@ -4,6 +4,7 @@ export function emptyTruckForm() {
   return {
     id: null,
     client: '',
+    marcaComercialId: '',
     dte: '',
     remito: '',
     chasis: '',
@@ -106,7 +107,7 @@ export function truckClassificationKey(truck) {
 }
 
 export function truckClassificationLabel(truck) {
-  return truckClassificationKey(truck) === 'blanco' ? 'Blanco' : 'Negro'
+  return truckClassificationKey(truck) === 'blanco' ? 'Via 1' : 'Via 2'
 }
 
 export function truckClassificationClass(truck) {
@@ -124,4 +125,3 @@ export function createId() {
   if (globalThis.crypto?.randomUUID) return globalThis.crypto.randomUUID()
   return `id-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`
 }
-

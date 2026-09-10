@@ -26,6 +26,57 @@
           </router-link>
         </nav>
         <span class="mobile-header-title lt-md">{{ currentRoleLabel }}</span>
+        <div class="zone-switcher-float gt-sm">
+          <button class="zone-fab" type="button">
+            <span class="zone-fab-avatar"><component :is="currentRoleIcon" :size="19" /></span>
+            <span class="zone-fab-copy">
+              <strong>{{ currentRoleLabel }}</strong>
+              <small>{{ currentRoleCaption }}</small>
+            </span>
+            <ChevronsUpDown :size="16" />
+            <q-menu auto-close class="role-menu">
+              <q-list padding style="min-width: 232px">
+                <q-item
+                  v-for="role in roles"
+                  :key="role.value"
+                  clickable
+                  :active="currentRole === role.value"
+                  active-class="role-menu-active"
+                  @click="setRole(role.value)"
+                >
+                  <q-item-section avatar><component :is="role.icon" :size="20" /></q-item-section>
+                  <q-item-section>
+                    <q-item-label>{{ role.label }}</q-item-label>
+                    <q-item-label caption>{{ role.caption }}</q-item-label>
+                  </q-item-section>
+                </q-item>
+                <q-separator v-if="adminNavigation.length" spaced />
+                <q-item
+                  v-for="item in adminNavigation"
+                  :key="item.to"
+                  clickable
+                  :active="route.path.startsWith(item.to)"
+                  active-class="role-menu-active"
+                  @click="goToAdministration(item.to)"
+                >
+                  <q-item-section avatar><component :is="item.icon" :size="20" /></q-item-section>
+                  <q-item-section>
+                    <q-item-label>{{ item.label }}</q-item-label>
+                    <q-item-label caption>{{ item.caption }}</q-item-label>
+                  </q-item-section>
+                </q-item>
+              </q-list>
+            </q-menu>
+          </button>
+          <button
+            class="zone-fab zone-fab--icon"
+            type="button"
+            title="Cerrar sesión"
+            @click="logout"
+          >
+            <LogOut :size="18" />
+          </button>
+        </div>
       </q-toolbar>
     </q-header>
 
@@ -39,7 +90,10 @@
         </header>
         <div class="mobile-drawer-zone">
           <component :is="currentRoleIcon" :size="20" />
-          <div><strong>{{ currentRoleLabel }}</strong><small>{{ currentRoleCaption }}</small></div>
+          <div>
+            <strong>{{ currentRoleLabel }}</strong
+            ><small>{{ currentRoleCaption }}</small>
+          </div>
         </div>
         <nav class="mobile-drawer-nav" aria-label="Navegación principal">
           <router-link
@@ -63,7 +117,25 @@
             @click="setRole(role.value)"
           >
             <component :is="role.icon" :size="19" />
-            <span><strong>{{ role.label }}</strong><small>{{ role.caption }}</small></span>
+            <span
+              ><strong>{{ role.label }}</strong
+              ><small>{{ role.caption }}</small></span
+            >
+          </button>
+        </div>
+        <div v-if="adminNavigation.length" class="mobile-drawer-roles">
+          <span>Administración</span>
+          <button
+            v-for="item in adminNavigation"
+            :key="item.to"
+            type="button"
+            @click="goToAdministration(item.to)"
+          >
+            <component :is="item.icon" :size="19" />
+            <span
+              ><strong>{{ item.label }}</strong
+              ><small>{{ item.caption }}</small></span
+            >
           </button>
         </div>
         <button class="mobile-drawer-logout" type="button" @click="logout">
@@ -75,38 +147,6 @@
     <q-page-container>
       <router-view />
     </q-page-container>
-
-    <div class="zone-switcher-float gt-sm">
-      <button class="zone-fab" type="button">
-        <span class="zone-fab-avatar"><component :is="currentRoleIcon" :size="19" /></span>
-        <span class="zone-fab-copy">
-          <strong>{{ currentRoleLabel }}</strong>
-          <small>{{ currentRoleCaption }}</small>
-        </span>
-        <ChevronsUpDown :size="16" />
-        <q-menu auto-close class="role-menu">
-          <q-list padding style="min-width: 232px">
-            <q-item
-              v-for="role in roles"
-              :key="role.value"
-              clickable
-              :active="currentRole === role.value"
-              active-class="role-menu-active"
-              @click="setRole(role.value)"
-            >
-              <q-item-section avatar><component :is="role.icon" :size="20" /></q-item-section>
-              <q-item-section>
-                <q-item-label>{{ role.label }}</q-item-label>
-                <q-item-label caption>{{ role.caption }}</q-item-label>
-              </q-item-section>
-            </q-item>
-          </q-list>
-        </q-menu>
-      </button>
-      <button class="zone-fab zone-fab--icon" type="button" title="Cerrar sesión" @click="logout">
-        <LogOut :size="18" />
-      </button>
-    </div>
   </q-layout>
 </template>
 
@@ -121,7 +161,9 @@ import {
   LogOut,
   Menu,
   Scale,
+  Tag,
   Truck,
+  UserRound,
   Warehouse,
   X,
 } from '@lucide/vue'
@@ -129,6 +171,7 @@ import {
 const route = useRoute()
 const router = useRouter()
 const authTokenKey = 'mark-auth-token'
+const accountKey = 'mark-auth-account'
 const drawerOpen = ref(false)
 
 const roles = [
@@ -164,6 +207,24 @@ const currentRoleData = computed(() => roles.find((role) => role.value === curre
 const currentRoleLabel = computed(() => currentRoleData.value?.label)
 const currentRoleCaption = computed(() => currentRoleData.value?.caption)
 const currentRoleIcon = computed(() => currentRoleData.value?.icon)
+const isAdmin = computed(() => {
+  try {
+    return JSON.parse(localStorage.getItem(accountKey) || 'null')?.rol === 'admin'
+  } catch {
+    return false
+  }
+})
+const adminNavigation = computed(() => [
+  {
+    label: 'Marcas comerciales',
+    caption: 'Clientes y códigos',
+    icon: Tag,
+    to: '/marcas-comerciales',
+  },
+  ...(isAdmin.value
+    ? [{ label: 'Usuarios', caption: 'Accesos y permisos', icon: UserRound, to: '/usuarios' }]
+    : []),
+])
 const navigation = {
   balanza: [{ label: 'Balanza', to: '/balanza', icon: Scale, section: 'balanza' }],
   produccion: [
@@ -174,7 +235,12 @@ const navigation = {
     { label: 'Stock', to: '/expedicion/stock', icon: Warehouse, section: 'stock' },
     { label: 'Pedidos', to: '/expedicion/pedidos', icon: ClipboardList, section: 'pedidos' },
     { label: 'Repartos', to: '/expedicion/repartos', icon: Truck, section: 'repartos' },
-    { label: 'Movimientos', to: '/expedicion/movimientos', icon: Warehouse, section: 'movimientos' },
+    {
+      label: 'Movimientos',
+      to: '/expedicion/movimientos',
+      icon: Warehouse,
+      section: 'movimientos',
+    },
   ],
 }
 const currentNavigation = computed(() =>
@@ -199,8 +265,14 @@ function setRole(roleValue) {
   }
 }
 
+function goToAdministration(path) {
+  drawerOpen.value = false
+  router.push(path)
+}
+
 function logout() {
   localStorage.removeItem(authTokenKey)
+  localStorage.removeItem(accountKey)
   router.replace('/')
 }
 
@@ -456,26 +528,22 @@ function sectionIsActive(role, section) {
 }
 
 .zone-switcher-float {
-  position: fixed;
-  right: 20px;
-  bottom: 20px;
-  z-index: 6000;
   display: flex;
+  flex: 0 0 auto;
   gap: 8px;
   align-items: center;
+  margin-left: auto;
 }
 
 .zone-fab {
   display: flex;
   gap: 9px;
   align-items: center;
-  min-height: 48px;
-  padding: 8px 14px;
-  border: 1px solid var(--line);
-  border-radius: 14px;
-  background: rgb(255 255 255 / 96%);
-  backdrop-filter: blur(12px);
-  box-shadow: 0 8px 30px rgb(0 0 0 / 12%);
+  min-height: 44px;
+  padding: 6px 10px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
   color: var(--ink);
   cursor: pointer;
   text-align: left;
@@ -483,21 +551,20 @@ function sectionIsActive(role, section) {
 }
 
 .zone-fab:hover {
-  border-color: #cfcfcf;
-  box-shadow: 0 10px 34px rgb(0 0 0 / 16%);
+  background: #f7f7f7;
 }
 
 .zone-fab--icon {
-  width: 48px;
-  min-height: 48px;
+  width: 44px;
+  min-height: 44px;
   justify-content: center;
   padding: 0;
 }
 
 .zone-fab-avatar {
   display: grid;
-  width: 34px;
-  height: 34px;
+  width: 32px;
+  height: 32px;
   flex: 0 0 auto;
   place-items: center;
   border-radius: 9px;

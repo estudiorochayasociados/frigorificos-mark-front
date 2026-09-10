@@ -1,5 +1,5 @@
 const authTokenKey = 'mark-auth-token'
-const apiBaseUrl = (import.meta.env.VITE_API_URL || 'http://localhost:3000/api').replace(/\/$/, '')
+const apiBaseUrl = (import.meta.env.VITE_API_URL || 'http://26.103.1.82:3000/api').replace(/\/$/, '')
 
 export async function apiRequest(path, options = {}) {
   const headers = new Headers(options.headers || {})
@@ -23,9 +23,9 @@ export async function apiRequest(path, options = {}) {
   return data
 }
 
-export function iniciarSesion(usuario, contrasena) {
+export function iniciarSesion(correo, contrasena) {
   return apiRequest('/autenticacion/login', {
     method: 'POST',
-    body: JSON.stringify({ usuario, contrasena }),
+    body: JSON.stringify({ correo, contrasena }),
   })
 }

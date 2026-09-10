@@ -7,7 +7,7 @@
     <div class="raw-material-compact">
       <div class="raw-material-table">
         <div class="raw-material-table-head">
-          <span>Camión</span><span>Clasificación</span><span>Estado</span><span>Lote</span
+          <span>Camión</span><span>Vía</span><span>Estado</span><span>Lote</span
           ><span>Orden</span><span>Aves</span><span>Muertos</span><span>Decomisos</span
           ><span>Disponibles</span>
         </div>
@@ -17,7 +17,7 @@
             <strong>{{ truck.chasis || 'Sin patente' }}</strong>
             <small>DTE {{ truck.dte || '-' }}</small>
           </div>
-          <span data-label="Clasificación" :class="['status-pill', truckClassificationClass(truck)]">
+          <span data-label="Vía" :class="['status-pill', truckClassificationClass(truck)]">
             {{ truckClassificationLabel(truck) }}
           </span>
           <span data-label="Estado" :class="['status-pill', truckStatusClass(truck)]">

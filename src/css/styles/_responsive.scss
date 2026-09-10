@@ -170,6 +170,7 @@
   }
 
   .balanza-form-footer {
+    flex-wrap: wrap;
     padding: 10px 0 0;
   }
 
@@ -221,9 +222,8 @@
   }
 
   .feedback-toast {
-    right: 14px;
     bottom: 78px;
-    left: 14px;
+    width: calc(100% - 28px);
     justify-content: center;
   }
 

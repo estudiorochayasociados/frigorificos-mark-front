@@ -9,6 +9,15 @@ import {
 import routes from './routes.js'
 
 const authTokenKey = 'mark-auth-token'
+const accountKey = 'mark-auth-account'
+
+function currentAccount() {
+  try {
+    return JSON.parse(localStorage.getItem(accountKey) || 'null')
+  } catch {
+    return null
+  }
+}
 
 /*
  * If not building with SSR mode, you can
@@ -38,8 +47,10 @@ export default defineRouter((/* { store, ssrContext } */) => {
 
   Router.beforeEach((to) => {
     const hasToken = Boolean(localStorage.getItem(authTokenKey))
+    const account = currentAccount()
 
     if (to.meta.requiresAuth && !hasToken) return '/'
+    if (to.meta.requiresAdmin && account?.rol !== 'admin') return '/balanza'
     if (to.meta.guestOnly && hasToken) return '/balanza'
   })
 
