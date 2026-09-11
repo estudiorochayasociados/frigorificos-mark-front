@@ -1,5 +1,23 @@
 export const DEFAULT_CALIBERS = ['5', '6', '7', '8', '9', '10', '11', '12', '13', '14']
 
+export function normalizeProductionOutput(outputs, caliber) {
+  const existing = (outputs || []).find((item) => item.caliber === caliber)
+  const boxes = Math.max(0, Number(existing?.boxes || 0))
+  const rest = { ...(existing || {}) }
+  delete rest.boxesB
+  return { ...rest, caliber, boxes }
+}
+
+export function normalizeProductionBOutputs(outputs) {
+  const normalized = (outputs || []).map((output) => ({
+    ...(output || {}),
+    caliber: String(output?.caliber ?? output?.calibre ?? '').trim(),
+    boxes: Math.max(0, Number(output?.boxes ?? output?.cajas ?? 0)),
+  }))
+
+  return DEFAULT_CALIBERS.map((caliber) => normalizeProductionOutput(normalized, caliber))
+}
+
 export function truckBirds(truck) {
   return Math.max(0, Number(truck?.avesOrigen || truck?.avesDte || 0))
 }
@@ -96,6 +114,13 @@ export function proposeFifoConsumption(
 }
 
 export function totalOutputBoxes(outputs) {
+  return (outputs || []).reduce(
+    (total, output) => total + Math.max(0, Number(output.boxes || 0)),
+    0,
+  )
+}
+
+export function totalOutputBoxesB(outputs) {
   return (outputs || []).reduce(
     (total, output) => total + Math.max(0, Number(output.boxes || 0)),
     0,

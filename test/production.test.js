@@ -3,7 +3,10 @@ import assert from 'node:assert/strict'
 import {
   consumedByTruck,
   groupTrucksByBrand,
+  normalizeProductionBOutputs,
+  normalizeProductionOutput,
   proposeFifoConsumption,
+  totalOutputBoxesB,
   truckAvailableBirds,
 } from '../src/utils/production.js'
 
@@ -48,4 +51,13 @@ test('only confirmed production consumption affects availability', () => {
     { id: 'c', consumptionConfirmedAt: '2026-08-21', consumption: { truck: 50 } },
   ])
   assert.deepEqual(result, { truck: 150 })
+})
+
+test('Cajas B are an independent caliber group', () => {
+  const output = normalizeProductionOutput([{ caliber: '10', boxes: 7 }], '10')
+  const outputsB = normalizeProductionBOutputs([{ id: 'b1', caliber: 'B-18', boxes: 3 }])
+  assert.equal(output.boxes, 7)
+  assert.equal(output.boxesB, undefined)
+  assert.deepEqual(outputsB, [{ id: 'b1', caliber: 'B-18', boxes: 3 }])
+  assert.equal(totalOutputBoxesB(outputsB), 3)
 })

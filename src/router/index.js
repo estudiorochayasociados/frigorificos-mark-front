@@ -19,6 +19,10 @@ function currentAccount() {
   }
 }
 
+function isFacundoRocha(account) {
+  return account?.nombre?.trim().toLocaleLowerCase('es-AR') === 'facundo rocha'
+}
+
 /*
  * If not building with SSR mode, you can
  * directly export the Router instantiation;
@@ -51,6 +55,7 @@ export default defineRouter((/* { store, ssrContext } */) => {
 
     if (to.meta.requiresAuth && !hasToken) return '/'
     if (to.meta.requiresAdmin && account?.rol !== 'admin') return '/balanza'
+    if (to.meta.requiresFacundo && !isFacundoRocha(account)) return '/balanza'
     if (to.meta.guestOnly && hasToken) return '/balanza'
   })
 

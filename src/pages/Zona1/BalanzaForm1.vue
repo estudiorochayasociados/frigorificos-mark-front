@@ -141,8 +141,15 @@
             </div>
             <div class="form-grid form-grid-spaced">
               <NonNegativeInput
+                v-model="form.avesGranja"
+                label="Aves origen"
+                outlined
+                dense
+                class="field-control"
+              />
+              <NonNegativeInput
                 v-model="form.avesOrigen"
-                label="Cantidad de aves"
+                label="Cantidad de aves planta"
                 outlined
                 dense
                 class="field-control"
@@ -185,6 +192,10 @@
               <div>
                 <span>Promedio planta</span><strong>{{ avg(formMetrics.promedioPlanta) }}</strong>
               </div>
+              <div>
+                <span>Dif. aves origen - planta</span
+                ><strong>{{ birds(formMetrics.diferenciaAvesGranjaPlanta) }}</strong>
+              </div>
             </div>
           </section>
         </div>
@@ -217,6 +228,7 @@ import {
   calculateNet,
   calculateTruckMetrics,
   formatAverageKg,
+  formatBirds,
   formatKg,
 } from '@/utils/truckCalculations'
 import { emptyTruckForm } from '@/utils/balanza'
@@ -301,5 +313,9 @@ function kg(value) {
 
 function avg(value) {
   return formatAverageKg(value)
+}
+
+function birds(value) {
+  return value == null ? '-' : `${formatBirds(value)} aves`
 }
 </script>

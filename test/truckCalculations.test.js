@@ -43,3 +43,14 @@ test('merma uses the granja-to-planta difference and keeps its loss positive', (
   assert.equal(metrics.diferenciaNetaGranjaPlanta, 300)
   near(metrics.porcentajeMerma, 0.03)
 })
+
+test('birds difference is calculated only when farm count is available', () => {
+  assert.equal(
+    calculateTruckMetrics({ avesGranja: 4425, avesOrigen: 4410 }).diferenciaAvesGranjaPlanta,
+    15,
+  )
+  assert.equal(
+    calculateTruckMetrics({ avesOrigen: 4410 }).diferenciaAvesGranjaPlanta,
+    null,
+  )
+})

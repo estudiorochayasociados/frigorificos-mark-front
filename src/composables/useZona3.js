@@ -144,14 +144,18 @@ export function useZona3() {
   })
   const stockRows = computed(() =>
     finishedStock.value.flatMap((item) =>
-      (item.outputs || [])
+      [
+        ...(item.outputs || []).map((output) => ({ ...output, caliberGroup: 'normal' })),
+        ...(item.outputsB || []).map((output) => ({ ...output, caliberGroup: 'B' })),
+      ]
         .filter((output) => Number(output.boxes || 0) > 0)
         .map((output) => ({
-          id: `${item.id}:${output.caliber}`,
+          id: `${item.id}:${output.caliberGroup}:${output.caliber}`,
           sourceId: item.id,
           brand: item.brand,
           product: item.product,
           caliber: output.caliber,
+          caliberGroup: output.caliberGroup,
           lot: item.lot,
           manufactureDate: item.manufactureDate,
           expirationDate: item.expirationDate,
@@ -215,7 +219,7 @@ export function useZona3() {
   })
   const stockOptions = computed(() =>
     stockRows.value.map((row) => ({
-      label: `${row.brand} · ${row.caliber} · Lote ${row.lot} · ${number(stockAvailable(row, activeLoad.value?.id))} disp.`,
+      label: `${row.brand} · ${caliberLabel(row)} · Lote ${row.lot} · ${number(stockAvailable(row, activeLoad.value?.id))} disp.`,
       value: row.id,
     })),
   )
@@ -246,7 +250,7 @@ export function useZona3() {
   })
   const transferStockOptions = computed(() =>
     stockRows.value.map((row) => ({
-      label: `${row.brand} · ${row.caliber} · Lote ${row.lot} · ${number(stockAvailable(row))} disp.`,
+      label: `${row.brand} · ${caliberLabel(row)} · Lote ${row.lot} · ${number(stockAvailable(row))} disp.`,
       value: row.id,
     })),
   )
@@ -347,6 +351,9 @@ export function useZona3() {
   function merchandiseKeyFor(row) {
     return `${row.brand}::${row.product}`
   }
+  function caliberLabel(row) {
+    return row.caliberGroup === 'B' ? `Calibre B ${row.caliber}` : `Calibre ${row.caliber}`
+  }
   function merchandiseForLine(line) {
     return stockRows.value.filter(
       (row) => merchandiseKeyFor(row) === line.merchandiseKey && stockAvailable(row) > 0,
@@ -379,7 +386,7 @@ export function useZona3() {
         const available = Math.max(0, producedAvailable - requestedInOtherOrderLines(line, caliber))
         return {
           value: caliber,
-          label: `Calibre ${caliber} · ${number(available)} cajas disponibles`,
+          label: `${caliber} · ${number(available)} cajas disponibles`,
         }
       })
       .filter((option) => option.value === line.caliber || !option.label.includes('· 0 cajas'))
@@ -389,7 +396,7 @@ export function useZona3() {
       .filter((row) => row.caliber === line.caliber)
       .map((row) => ({
         value: row.id,
-        label: `${row.brand} · ${row.caliber} · Lote ${row.lot} · ${number(stockAvailable(row, activeLoad.value?.id))} disp.`,
+        label: `${row.brand} · ${caliberLabel(row)} · Lote ${row.lot} · ${number(stockAvailable(row, activeLoad.value?.id))} disp.`,
       }))
   }
   function selectOrderMerchandise(line) {
@@ -756,7 +763,7 @@ export function useZona3() {
   }
   function stockLabel(stockRowId) {
     const row = stockRows.value.find((item) => item.id === stockRowId)
-    return row ? `${row.brand} · ${row.caliber} · Lote ${row.lot}` : 'Sin lote asociado'
+    return row ? `${row.brand} · ${caliberLabel(row)} · Lote ${row.lot}` : 'Sin lote asociado'
   }
   function confirmPreparation() {
     const rows = activeAllocationRows.value
@@ -949,6 +956,7 @@ export function useZona3() {
     updateTruckCapacity,
     loadPositionLabel,
     lineLabel,
+    caliberLabel,
     stockLabel,
     confirmPreparation,
     copyPlannedToLoaded,

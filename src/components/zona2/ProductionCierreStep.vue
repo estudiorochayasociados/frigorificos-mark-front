@@ -29,12 +29,23 @@
           </div>
         </section>
         <section class="closure-summary-section">
-          <h3>Producto terminado</h3>
+          <h3>Cajas normales</h3>
           <div v-for="output in producedOutputs" :key="output.caliber" class="closure-summary-row">
-            <span>Calibre {{ output.caliber }}</span><strong>{{ number(output.boxes) }} cajas</strong>
+            <span>Calibre {{ output.caliber }}</span
+            ><strong>{{ number(output.boxes) }} cajas</strong>
           </div>
           <div class="closure-summary-row closure-summary-row--total">
-            <span>Total cajas</span><strong>{{ number(totalBoxes(production.outputs)) }}</strong>
+            <span>Total cajas normales</span><strong>{{ number(totalBoxes(production.outputs)) }}</strong>
+          </div>
+        </section>
+        <section class="closure-summary-section">
+          <h3>Cajas B</h3>
+          <div v-for="output in producedOutputsB" :key="output.caliber" class="closure-summary-row">
+            <span>Calibre B {{ output.caliber }}</span
+            ><strong>{{ number(output.boxes) }} cajas</strong>
+          </div>
+          <div class="closure-summary-row closure-summary-row--total">
+            <span>Total cajas B</span><strong>{{ number(totalBoxes(production.outputsB)) }}</strong>
           </div>
         </section>
       </div>
@@ -75,7 +86,8 @@
           <div>
             <strong>Alta de stock automática</strong
             ><span
-              >Se generarán {{ number(totalBoxes(production.outputs)) }} cajas trazadas al lote
+              >Se generarán {{ number(totalBoxes(production.outputs)) }} cajas normales y
+              {{ number(totalBoxes(production.outputsB)) }} cajas B, trazadas al lote
               {{ production.finished.lot || '-' }}.</span
             >
           </div>
@@ -106,6 +118,7 @@ defineProps({
   production: { type: Object, required: true },
   activeTotals: { type: Object, required: true },
   producedOutputs: { type: Array, required: true },
+  producedOutputsB: { type: Array, required: true },
   selectedConsumption: { type: Number, required: true },
   number: { type: Function, required: true },
   totalBoxes: { type: Function, required: true },

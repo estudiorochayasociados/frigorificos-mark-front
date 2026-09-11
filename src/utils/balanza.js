@@ -18,6 +18,7 @@ export function emptyTruckForm() {
     brutoPlanta: 0,
     taraPlanta: 0,
     avesOrigen: 0,
+    avesGranja: 0,
     avesDte: 0,
     vacias: 0,
     inicio: '',

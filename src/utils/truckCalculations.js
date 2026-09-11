@@ -25,6 +25,7 @@ export function calculateTruckMetrics(truck) {
   const diferenciaNetaGranjaPlanta = netoGranja - netoPlanta
   const diferenciaNetaRealPlanta = netoPlanta - netoReal
   const aves = numberValue(truck?.avesOrigen)
+  const avesGranja = numberValue(truck?.avesGranja)
   const muertos = numberValue(truck?.muertos)
   const decomisos = truckConfiscations(truck)
   const promedioGranja = safeDivide(netoGranja, aves)
@@ -44,6 +45,7 @@ export function calculateTruckMetrics(truck) {
     promedioGranja,
     promedioReal,
     promedioPlanta,
+    diferenciaAvesGranjaPlanta: avesGranja > 0 ? avesGranja - aves : null,
     kgMuertos: promedio * muertos,
     kgDecomisados: promedio * decomisos,
     porcentajeMerma: safeDivide(diferenciaNetaGranjaPlanta, netoGranja),
@@ -61,6 +63,10 @@ export function formatAverageKg(value) {
     minimumFractionDigits: 3,
     maximumFractionDigits: 3,
   })} kg`
+}
+
+export function formatBirds(value) {
+  return Math.round(numberValue(value)).toLocaleString(locale)
 }
 
 export function formatPercent(value) {

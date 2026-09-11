@@ -51,6 +51,7 @@
           :number="number"
           :total-boxes="totalBoxes"
           @confirm-output="confirmOutput"
+          @update-output-b-boxes="updateOutputBBoxes"
           @update-output-boxes="updateOutputBoxes"
           @update-product="updateProduct"
         />
@@ -76,6 +77,7 @@
           :production="activeProduction"
           :active-totals="activeTotals"
           :produced-outputs="producedOutputs"
+          :produced-outputs-b="producedOutputsB"
           :selected-consumption="selectedConsumption"
           :number="number"
           :total-boxes="totalBoxes"
@@ -101,35 +103,45 @@
 </template>
 
 <script setup>
-import { computed, reactive, ref, watch } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import ProductionCargaStep from '@/components/zona2/ProductionCargaStep.vue'
 import ProductionCierreStep from '@/components/zona2/ProductionCierreStep.vue'
 import ProductionConsumoStep from '@/components/zona2/ProductionConsumoStep.vue'
 import ProductionIngresoStep from '@/components/zona2/ProductionIngresoStep.vue'
+import { useCamiones } from '@/composables/useCamiones'
 import { AlertCircle, ArrowLeft, CheckCircle2, Truck } from '@lucide/vue'
 import {
   DEFAULT_CALIBERS,
   consumedByTruck,
   createId,
   proposeFifoConsumption,
+  normalizeProductionBOutputs,
+  normalizeProductionOutput,
   totalOutputBoxes,
   truckAvailableBirds,
   truckBirds,
   truckConfiscations,
 } from '@/utils/production'
 
-const trucksKey = 'mark-frigorifico-operacion-v2'
 const productionKey = 'mark-frigorifico-produccion-v2'
 const finishedStockKey = 'mark-frigorifico-stock-terminado-v1'
 const actor = 'Operador Producción'
 const route = useRoute()
 const router = useRouter()
 const today = new Date().toISOString().slice(0, 10)
-const trucks = ref(loadArray(trucksKey))
+const { camiones: trucks, listarCamiones } = useCamiones()
 const productions = ref(loadArray(productionKey).map(normalizeProduction))
 const selectedDate = ref(typeof route.query.date === 'string' ? route.query.date : today)
 const feedback = reactive({ message: '', type: 'success' })
+
+onMounted(async () => {
+  try {
+    await listarCamiones()
+  } catch (error) {
+    showFeedback(error.message, 'error')
+  }
+})
 
 const productOptions = ['Pollo entero']
 const flowSteps = [
@@ -173,6 +185,9 @@ const consumptionDifference = computed(
 const producedOutputs = computed(() =>
   (activeProduction.value?.outputs || []).filter((output) => Number(output.boxes || 0) > 0),
 )
+const producedOutputsB = computed(() =>
+  (activeProduction.value?.outputsB || []).filter((output) => Number(output.boxes || 0) > 0),
+)
 
 watch(productions, (value) => localStorage.setItem(productionKey, JSON.stringify(value)), {
   deep: true,
@@ -189,10 +204,10 @@ function normalizeProduction(production) {
   return {
     ...production,
     product: production.product || 'Pollo entero',
-    outputs: DEFAULT_CALIBERS.map(
-      (caliber) =>
-        production.outputs?.find((item) => item.caliber === caliber) || { caliber, boxes: 0 },
+    outputs: DEFAULT_CALIBERS.map((caliber) =>
+      normalizeProductionOutput(production.outputs, caliber),
     ),
+    outputsB: normalizeProductionBOutputs(production.outputsB),
     consumption: production.consumption || {},
     truckOrder:
       production.truckOrder ||
@@ -251,6 +266,12 @@ function updateOutputBoxes(caliber, value) {
   if (output) output.boxes = value
 }
 
+function updateOutputBBoxes(caliber, value) {
+  activeProduction.value.outputsB = normalizeProductionBOutputs(activeProduction.value.outputsB)
+  const output = activeProduction.value.outputsB.find((item) => item.caliber === caliber)
+  if (output) output.boxes = value
+}
+
 function updateRequiredBirds(value) {
   activeProduction.value.requiredBirds = value
 }
@@ -269,6 +290,10 @@ function confirmOutput() {
     (output) => !Number.isInteger(Number(output.boxes)) || Number(output.boxes) < 0,
   )
   if (invalidOutput) return showFeedback('Las cajas deben ser números enteros positivos', 'error')
+  const invalidOutputB = production.outputsB.some(
+    (output) => !Number.isInteger(Number(output.boxes)) || Number(output.boxes) < 0,
+  )
+  if (invalidOutputB) return showFeedback('Las cajas B deben ser números enteros positivos', 'error')
   if (totalBoxes(production.outputs) <= 0)
     return showFeedback('Ingresa al menos una caja producida', 'error')
   production.status = 'in_process'
@@ -343,7 +368,9 @@ function closeProduction() {
       expirationDate: finished.expirationDate,
       clientCode: finished.clientCode,
       outputs: producedOutputs.value.map((output) => ({ ...output })),
+      outputsB: producedOutputsB.value.map((output) => ({ ...output })),
       totalBoxes: totalBoxes(production.outputs),
+      totalBoxesB: totalBoxes(production.outputsB),
       createdAt: closedAt,
     })
     try {

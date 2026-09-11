@@ -34,27 +34,43 @@ const routes = [
       {
         path: 'produccion/balance',
         component: () => import('@/pages/Zona2/BalanceMasaPage.vue'),
+        meta: { requiresFacundo: true },
       },
       {
         path: 'produccion/proceso',
         component: () => import('@/pages/Zona2/ProduccionProcesoPage.vue'),
       },
-      { path: 'comercial', redirect: '/expedicion/pedidos' },
-      { path: 'expedicion', redirect: '/expedicion/stock' },
-      { path: 'expedicion/stock', component: () => import('@/pages/Zona3/StockPage.vue') },
-      { path: 'expedicion/pedidos', component: () => import('@/pages/Zona3/PedidosPage.vue') },
+      { path: 'comercial', redirect: '/expedicion/pedidos', meta: { requiresFacundo: true } },
+      { path: 'expedicion', redirect: '/expedicion/stock', meta: { requiresFacundo: true } },
+      {
+        path: 'expedicion/stock',
+        component: () => import('@/pages/Zona3/StockPage.vue'),
+        meta: { requiresFacundo: true },
+      },
+      {
+        path: 'expedicion/pedidos',
+        component: () => import('@/pages/Zona3/PedidosPage.vue'),
+        meta: { requiresFacundo: true },
+      },
       {
         path: 'expedicion/pedidos/nuevo',
         component: () => import('@/pages/Zona3/PedidosPage.vue'),
+        meta: { requiresFacundo: true },
       },
-      { path: 'expedicion/repartos', component: () => import('@/pages/Zona3/RepartosPage.vue') },
+      {
+        path: 'expedicion/repartos',
+        component: () => import('@/pages/Zona3/RepartosPage.vue'),
+        meta: { requiresFacundo: true },
+      },
       {
         path: 'expedicion/repartos/nuevo',
         component: () => import('@/pages/Zona3/RepartosPage.vue'),
+        meta: { requiresFacundo: true },
       },
       {
         path: 'expedicion/movimientos',
         component: () => import('@/pages/Zona3/MovimientosPage.vue'),
+        meta: { requiresFacundo: true },
       },
     ],
   },

@@ -64,7 +64,7 @@
               >
                 <q-td key="brand" :props="props"></q-td>
                 <q-td key="product" :props="props"></q-td>
-                <q-td key="caliber" :props="props">Calibre {{ row.caliber }}</q-td>
+                <q-td key="caliber" :props="props">{{ caliberLabel(row) }}</q-td>
                 <q-td key="lot" :props="props">{{ row.lot }}</q-td>
                 <q-td key="boxes" :props="props"
                   >{{ number(stockAvailable(row)) }} / {{ number(row.boxes) }}</q-td
@@ -89,7 +89,7 @@
                 <header><strong>{{ product.name }}</strong><span>{{ number(product.available) }} / {{ number(product.boxes) }} cajas</span></header>
                 <dl>
                   <div v-for="row in product.rows" :key="row.id">
-                    <dt>Calibre {{ row.caliber }} · Lote {{ row.lot }}</dt>
+                    <dt>{{ caliberLabel(row) }} · Lote {{ row.lot }}</dt>
                     <dd>{{ number(stockAvailable(row)) }} / {{ number(row.boxes) }}</dd>
                   </div>
                 </dl>
@@ -118,6 +118,7 @@ const {
   dailyStockGroups,
   number,
   stockAvailable,
+  caliberLabel,
   isStockBrandOpen,
   toggleStockBrand,
 } = useZona3()

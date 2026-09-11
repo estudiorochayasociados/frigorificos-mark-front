@@ -368,11 +368,12 @@
 </template>
 
 <script setup>
-import { computed, reactive, ref, watch } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import NonNegativeInput from '@/components/NonNegativeInput.vue'
 import PageHeader from '@/components/PageHeader.vue'
 import ResponsiveDataTable from '@/components/ResponsiveDataTable.vue'
+import { useCamiones } from '@/composables/useCamiones'
 import { calculateNet } from '@/utils/truckCalculations'
 import {
   AlertCircle,
@@ -390,6 +391,8 @@ import {
   consumedByTruck,
   createId,
   groupTrucksByBrand,
+  normalizeProductionBOutputs,
+  normalizeProductionOutput,
   productionDateForTruck,
   productionStatusLabel,
   totalOutputBoxes,
@@ -398,20 +401,27 @@ import {
   truckConfiscations,
 } from '@/utils/production'
 
-const trucksKey = 'mark-frigorifico-operacion-v2'
 const productionKey = 'mark-frigorifico-produccion-v2'
 const massBalanceKey = 'mark-frigorifico-balance-masa-v1'
 const actor = 'Operador Producción'
 const route = useRoute()
 const router = useRouter()
 const today = new Date().toISOString().slice(0, 10)
-const trucks = ref(loadArray(trucksKey))
+const { camiones: trucks, listarCamiones } = useCamiones()
 const productions = ref(loadArray(productionKey).map(normalizeProduction))
 const massBalances = ref(loadArray(massBalanceKey).map(normalizeMassBalance))
 const selectedDate = ref(typeof route.query.date === 'string' ? route.query.date : today)
 const historySearch = ref('')
 const historyStatus = ref('all')
 const feedback = reactive({ message: '', type: 'success' })
+
+onMounted(async () => {
+  try {
+    await listarCamiones()
+  } catch (error) {
+    showFeedback(error.message, 'error')
+  }
+})
 
 const historyStatusOptions = [
   { label: 'Todos', value: 'all' },
@@ -591,10 +601,10 @@ function normalizeProduction(production) {
   return {
     ...production,
     product: production.product || 'Pollo entero',
-    outputs: DEFAULT_CALIBERS.map(
-      (caliber) =>
-        production.outputs?.find((item) => item.caliber === caliber) || { caliber, boxes: 0 },
+    outputs: DEFAULT_CALIBERS.map((caliber) =>
+      normalizeProductionOutput(production.outputs, caliber),
     ),
+    outputsB: normalizeProductionBOutputs(production.outputsB),
     consumption: production.consumption || {},
     truckOrder:
       production.truckOrder ||

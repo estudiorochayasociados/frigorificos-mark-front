@@ -37,7 +37,7 @@
             <q-menu auto-close class="role-menu">
               <q-list padding style="min-width: 232px">
                 <q-item
-                  v-for="role in roles"
+                  v-for="role in visibleRoles"
                   :key="role.value"
                   clickable
                   :active="currentRole === role.value"
@@ -110,7 +110,7 @@
         <div class="mobile-drawer-roles">
           <span>Cambiar zona</span>
           <button
-            v-for="role in roles"
+            v-for="role in visibleRoles"
             :key="role.value"
             type="button"
             :class="{ active: currentRole === role.value }"
@@ -197,6 +197,19 @@ const roles = [
     to: '/expedicion/stock',
   },
 ]
+const isFacundoRocha = computed(() => {
+  try {
+    return (
+      JSON.parse(localStorage.getItem(accountKey) || 'null')?.nombre?.trim().toLocaleLowerCase('es-AR') ===
+      'facundo rocha'
+    )
+  } catch {
+    return false
+  }
+})
+const visibleRoles = computed(() =>
+  isFacundoRocha.value ? roles : roles.filter((role) => role.value !== 'expedicion'),
+)
 
 const currentRole = computed(() => {
   if (route.path.startsWith('/produccion')) return 'produccion'
@@ -244,10 +257,12 @@ const navigation = {
   ],
 }
 const currentNavigation = computed(() =>
-  navigation[currentRole.value].map((item) => ({
-    ...item,
-    active: () => sectionIsActive(currentRole.value, item.section),
-  })),
+  navigation[currentRole.value]
+    .filter((item) => isFacundoRocha.value || item.to !== '/produccion/balance')
+    .map((item) => ({
+      ...item,
+      active: () => sectionIsActive(currentRole.value, item.section),
+    })),
 )
 
 watch(
