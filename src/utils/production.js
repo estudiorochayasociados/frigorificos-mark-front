@@ -1,5 +1,11 @@
 export const DEFAULT_CALIBERS = ['5', '6', '7', '8', '9', '10', '11', '12', '13', '14']
 
+function dateMatchesFilter(date, filter) {
+  if (!filter) return true
+  if (typeof filter === 'string') return date === filter
+  return date >= String(filter.desde || '') && date <= String(filter.hasta || '')
+}
+
 export function normalizeProductionOutput(outputs, caliber) {
   const existing = (outputs || []).find((item) => item.caliber === caliber)
   const boxes = Math.max(0, Number(existing?.boxes || 0))
@@ -15,7 +21,8 @@ export function normalizeProductionBOutputs(outputs) {
     boxes: Math.max(0, Number(output?.boxes ?? output?.cajas ?? 0)),
   }))
 
-  return DEFAULT_CALIBERS.map((caliber) => normalizeProductionOutput(normalized, caliber))
+  if (normalized.length) return normalized
+  return DEFAULT_CALIBERS.map((caliber) => ({ caliber, boxes: 0 }))
 }
 
 export function truckBirds(truck) {
@@ -42,22 +49,26 @@ export function productionDateForTruck(truck) {
 
 export function groupTrucksByBrand(trucks, date) {
   const groups = new Map()
+  const splitByDate =
+    date && typeof date !== 'string' && String(date.desde || '') !== String(date.hasta || '')
   trucks
     .filter(
       (truck) =>
         truck?.client &&
-        (!date
-          ? true
-          : productionDateForTruck(truck) === date && Boolean(truck.lineConfirmedAt || truck.fin)),
+        dateMatchesFilter(productionDateForTruck(truck), date) &&
+        (!date || Boolean(truck.lineConfirmedAt || truck.fin)),
     )
     .forEach((truck) => {
-      const current = groups.get(truck.client) || []
+      const truckDate = productionDateForTruck(truck)
+      const key = splitByDate ? `${truck.client}::${truckDate}` : truck.client
+      const current = groups.get(key) || []
       current.push(truck)
-      groups.set(truck.client, current)
+      groups.set(key, current)
     })
   return [...groups.entries()].map(([brand, brandTrucks]) => ({
-    brand,
+    brand: splitByDate ? brand.split('::')[0] : brand,
     trucks: brandTrucks.sort(compareProductionOrder),
+    date: productionDateForTruck(brandTrucks[0]),
   }))
 }
 

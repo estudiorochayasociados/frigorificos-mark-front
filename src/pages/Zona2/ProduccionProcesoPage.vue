@@ -110,11 +110,12 @@ import ProductionCierreStep from '@/components/zona2/ProductionCierreStep.vue'
 import ProductionConsumoStep from '@/components/zona2/ProductionConsumoStep.vue'
 import ProductionIngresoStep from '@/components/zona2/ProductionIngresoStep.vue'
 import { useCamiones } from '@/composables/useCamiones'
+import { useProducciones } from '@/composables/useProducciones'
+import { dateFromQuery, todayIsoDate } from '@/utils/date'
 import { AlertCircle, ArrowLeft, CheckCircle2, Truck } from '@lucide/vue'
 import {
   DEFAULT_CALIBERS,
   consumedByTruck,
-  createId,
   proposeFifoConsumption,
   normalizeProductionBOutputs,
   normalizeProductionOutput,
@@ -124,20 +125,37 @@ import {
   truckConfiscations,
 } from '@/utils/production'
 
-const productionKey = 'mark-frigorifico-produccion-v2'
-const finishedStockKey = 'mark-frigorifico-stock-terminado-v1'
-const actor = 'Operador Producción'
 const route = useRoute()
 const router = useRouter()
-const today = new Date().toISOString().slice(0, 10)
+const today = todayIsoDate()
 const { camiones: trucks, listarCamiones } = useCamiones()
-const productions = ref(loadArray(productionKey).map(normalizeProduction))
-const selectedDate = ref(typeof route.query.date === 'string' ? route.query.date : today)
+const {
+  listarProducciones,
+  obtenerProduccion,
+  confirmarIngreso,
+  confirmarProduccion,
+  confirmarConsumo,
+  cerrarProduccion,
+} = useProducciones()
+const productions = ref([])
+const selectedDate = ref(dateFromQuery(route.query.date, today))
 const feedback = reactive({ message: '', type: 'success' })
 
 onMounted(async () => {
   try {
-    await listarCamiones()
+    await listarCamiones(selectedDate.value)
+    const disponibles = await listarProducciones(selectedDate.value)
+    productions.value = disponibles.map(normalizeProduction)
+    if (!activeProduction.value && route.query.id) {
+      const production = await obtenerProduccion(route.query.id)
+      productions.value = [normalizeProduction(production)]
+    }
+    if (
+      activeProduction.value?.productionConfirmedAt &&
+      !activeProduction.value.consumptionConfirmedAt
+    ) {
+      applyFifo(false)
+    }
   } catch (error) {
     showFeedback(error.message, 'error')
   }
@@ -172,7 +190,10 @@ const activeTrucks = computed(() => {
 const priorConsumption = computed(() =>
   consumedByTruck(productions.value, activeProduction.value?.id),
 )
-const activeTotals = computed(() => totalsFor(activeTrucks.value))
+const activeTotals = computed(() => ({
+  ...totalsFor(activeTrucks.value),
+  available: activeTrucks.value.reduce((total, truck) => total + availableForTruck(truck), 0),
+}))
 const selectedConsumption = computed(() =>
   Object.values(activeProduction.value?.consumption || {}).reduce(
     (total, value) => total + Math.max(0, Number(value || 0)),
@@ -189,13 +210,10 @@ const producedOutputsB = computed(() =>
   (activeProduction.value?.outputsB || []).filter((output) => Number(output.boxes || 0) > 0),
 )
 
-watch(productions, (value) => localStorage.setItem(productionKey, JSON.stringify(value)), {
-  deep: true,
-})
 watch(
   () => route.query.date,
   (date) => {
-    const nextDate = typeof date === 'string' ? date : today
+    const nextDate = dateFromQuery(date, today)
     if (selectedDate.value !== nextDate) selectedDate.value = nextDate
   },
 )
@@ -219,17 +237,11 @@ function normalizeProduction(production) {
       ),
     events: production.events || [],
     truckSnapshots: production.truckSnapshots || {},
-    finished:
-      production.finished || defaultFinished(production.date || today, production.brand || ''),
-  }
-}
-
-function loadArray(key) {
-  try {
-    const parsed = JSON.parse(localStorage.getItem(key) || '[]')
-    return Array.isArray(parsed) ? parsed : []
-  } catch {
-    return []
+    finished: normalizeFinished(
+      production.finished,
+      production.date || today,
+      production.brand || '',
+    ),
   }
 }
 
@@ -240,21 +252,17 @@ function nextStepFor(production) {
   return 'ingreso'
 }
 
-function confirmEntry() {
+async function confirmEntry() {
   const production = activeProduction.value
   if (!production || activeTrucks.value.length === 0)
     return showFeedback('No hay camiones asociados a esta producción', 'error')
-  if (!production.entryConfirmedAt) {
-    production.truckSnapshots = Object.fromEntries(
-      production.truckIds
-        .map((id) => trucks.value.find((truck) => truck.id === id))
-        .filter(Boolean)
-        .map((truck) => [truck.id, { ...truck }]),
-    )
-    production.entryConfirmedAt = new Date().toISOString()
-    addEvent(production, 'Ingreso de materia prima confirmado')
+  if (production.entryConfirmedAt) return goToStep('carga')
+  try {
+    replaceProduction(await confirmarIngreso(production.id))
+    goToStep('carga')
+  } catch (error) {
+    showFeedback(error.message, 'error')
   }
-  goToStep('carga')
 }
 
 function updateProduct(value) {
@@ -284,7 +292,7 @@ function updateFinished(field, value) {
   activeProduction.value.finished[field] = value
 }
 
-function confirmOutput() {
+async function confirmOutput() {
   const production = activeProduction.value
   const invalidOutput = production.outputs.some(
     (output) => !Number.isInteger(Number(output.boxes)) || Number(output.boxes) < 0,
@@ -293,15 +301,29 @@ function confirmOutput() {
   const invalidOutputB = production.outputsB.some(
     (output) => !Number.isInteger(Number(output.boxes)) || Number(output.boxes) < 0,
   )
-  if (invalidOutputB) return showFeedback('Las cajas B deben ser números enteros positivos', 'error')
+  if (invalidOutputB)
+    return showFeedback('Las cajas B deben ser números enteros positivos', 'error')
   if (totalBoxes(production.outputs) <= 0)
     return showFeedback('Ingresa al menos una caja producida', 'error')
-  production.status = 'in_process'
-  production.productionConfirmedAt = new Date().toISOString()
-  production.requiredBirds = Number(production.requiredBirds || activeTotals.value.available)
-  addEvent(production, 'Producción por calibre confirmada')
-  applyFifo(false)
-  goToStep('consumo')
+  try {
+    const updated = await confirmarProduccion(production.id, {
+      producto: production.product,
+      salidas: production.outputs.map((output) => ({
+        calibre: output.caliber,
+        cajas: Number(output.boxes || 0),
+      })),
+      salidasB: production.outputsB.map((output) => ({
+        calibre: output.caliber,
+        cajas: Number(output.boxes || 0),
+      })),
+      avesRequeridas: Number(production.requiredBirds || activeTotals.value.available),
+    })
+    replaceProduction(updated)
+    applyFifo(false)
+    goToStep('consumo')
+  } catch (error) {
+    showFeedback(error.message, 'error')
+  }
 }
 
 function applyFifo(notify = true) {
@@ -316,7 +338,7 @@ function applyFifo(notify = true) {
   if (notify) showFeedback('Consumo FIFO recalculado')
 }
 
-function confirmConsumption() {
+async function confirmConsumption() {
   const production = activeProduction.value
   const required = Number(production.requiredBirds || 0)
   if (!Number.isInteger(required) || required <= 0)
@@ -331,16 +353,27 @@ function confirmConsumption() {
     return showFeedback('El consumo no puede superar la disponibilidad de cada camión', 'error')
   if (selectedConsumption.value !== required)
     return showFeedback('Las aves seleccionadas deben coincidir con las necesarias', 'error')
-  production.consumptionConfirmedAt = new Date().toISOString()
-  production.finished = {
-    ...defaultFinished(production.date, production.brand),
-    ...production.finished,
+  try {
+    const updated = await confirmarConsumo(production.id, {
+      avesRequeridas: required,
+      consumos: Object.entries(production.consumption).map(([camionId, aves]) => ({
+        camionId,
+        aves: Number(aves || 0),
+      })),
+    })
+    updated.finished = normalizeFinished(
+      { ...production.finished, ...updated.finished },
+      production.date,
+      production.brand,
+    )
+    replaceProduction(updated)
+    goToStep('cierre')
+  } catch (error) {
+    showFeedback(error.message, 'error')
   }
-  addEvent(production, 'Consumo de materia prima confirmado')
-  goToStep('cierre')
 }
 
-function closeProduction() {
+async function closeProduction() {
   const production = activeProduction.value
   const finished = production.finished
   if (
@@ -355,39 +388,19 @@ function closeProduction() {
   if (finished.expirationDate < finished.manufactureDate)
     return showFeedback('El vencimiento debe ser posterior a la fabricación', 'error')
   if (production.status === 'completed') return
-  const closedAt = new Date().toISOString()
-  const stock = loadArray(finishedStockKey)
-  if (!stock.some((item) => item.productionId === production.id)) {
-    stock.push({
-      id: createId(),
-      productionId: production.id,
-      brand: production.brand,
-      product: production.product,
-      lot: finished.lot,
-      manufactureDate: finished.manufactureDate,
-      expirationDate: finished.expirationDate,
-      clientCode: finished.clientCode,
-      outputs: producedOutputs.value.map((output) => ({ ...output })),
-      outputsB: producedOutputsB.value.map((output) => ({ ...output })),
-      totalBoxes: totalBoxes(production.outputs),
-      totalBoxesB: totalBoxes(production.outputsB),
-      createdAt: closedAt,
-    })
-    try {
-      localStorage.setItem(finishedStockKey, JSON.stringify(stock))
-    } catch {
-      return showFeedback('No se pudo generar el stock terminado. Intenta nuevamente.', 'error')
-    }
+  try {
+    replaceProduction(await cerrarProduccion(production.id, { terminado: finished }))
+    showFeedback('Producción cerrada y stock terminado guardado en la base de datos')
+  } catch (error) {
+    showFeedback(error.message, 'error')
   }
-  production.status = 'completed'
-  production.closedAt = closedAt
-  addEvent(production, 'Producción cerrada y stock terminado generado')
-  showFeedback('Producción cerrada y stock terminado generado')
 }
 
-function addEvent(production, label) {
-  production.events.push({ id: createId(), label, actor, at: new Date().toISOString() })
-  production.updatedAt = new Date().toISOString()
+function replaceProduction(production) {
+  const normalized = normalizeProduction(production)
+  const index = productions.value.findIndex((item) => item.id === normalized.id)
+  if (index < 0) productions.value.push(normalized)
+  else productions.value[index] = normalized
 }
 
 function defaultFinished(date, brand, sequence = 1) {
@@ -400,6 +413,15 @@ function defaultFinished(date, brand, sequence = 1) {
     manufactureDate: date,
     expirationDate: expiration.toISOString().slice(0, 10),
   }
+}
+
+function normalizeFinished(finished, date, brand) {
+  const values = Object.fromEntries(
+    Object.entries(finished || {}).filter(
+      ([, value]) => value !== '' && value !== null && value !== undefined,
+    ),
+  )
+  return { ...defaultFinished(date, brand), ...values }
 }
 
 function canOpenStep(step) {

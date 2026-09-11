@@ -1,5 +1,6 @@
 import { ref } from 'vue'
 import { apiRequest } from '@/services/api'
+import { dateQuery } from '@/utils/date'
 
 export function useCamiones() {
   const camiones = ref([])
@@ -10,7 +11,7 @@ export function useCamiones() {
     cargando.value = true
     error.value = ''
     try {
-      const query = fecha ? `?fecha=${encodeURIComponent(fecha)}` : ''
+      const query = dateQuery(fecha)
       camiones.value = await apiRequest(`/camiones${query}`)
       return camiones.value
     } catch (exception) {
@@ -47,10 +48,10 @@ export function useCamiones() {
     return apiRequest(`/camiones/${encodeURIComponent(id)}`, { method: 'DELETE' })
   }
 
-  async function ordenarCamiones(ids) {
+  async function ordenarCamiones(ids, fecha) {
     const resultado = await apiRequest('/camiones/orden', {
       method: 'PATCH',
-      body: JSON.stringify({ camionIds: ids }),
+      body: JSON.stringify({ camionIds: ids, ...(fecha ? { fecha } : {}) }),
     })
     camiones.value = resultado
     return resultado

@@ -326,6 +326,15 @@
           description="Datos recibidos automáticamente desde Balanza."
         />
 
+        <section class="date-range-filters" aria-label="Filtro de producciones">
+          <DateInput v-model="dateRange.desde" label="Desde" />
+          <DateInput v-model="dateRange.hasta" label="Hasta" />
+          <button class="secondary-action" type="button" @click="setTodayRange">Ver hoy</button>
+          <span v-if="!dateRangeValid" class="date-range-error"
+            >La fecha desde no puede ser posterior a la fecha hasta.</span
+          >
+        </section>
+
         <ResponsiveDataTable
           class="production-list-card"
           row-key="brand"
@@ -354,6 +363,7 @@
                   >
                 </div>
               </q-td>
+              <q-td key="entryDate" :props="props">{{ shortDate(props.row.date) }}</q-td>
               <q-td key="processStatus" :props="props">
                 <span :class="['status-pill', processStatusClass(props.row)]">
                   {{ processStatusLabel(props.row) }}
@@ -396,7 +406,10 @@ import { useRoute, useRouter } from 'vue-router'
 import NonNegativeInput from '@/components/NonNegativeInput.vue'
 import PageHeader from '@/components/PageHeader.vue'
 import ResponsiveDataTable from '@/components/ResponsiveDataTable.vue'
+import DateInput from '@/components/DateInput.vue'
+import { useBalancesMasa } from '@/composables/useBalancesMasa'
 import { useCamiones } from '@/composables/useCamiones'
+import { useProducciones } from '@/composables/useProducciones'
 import {
   AlertCircle,
   Calculator,
@@ -410,9 +423,15 @@ import {
 } from '@lucide/vue'
 import { truckClassificationKey } from '@/utils/balanza'
 import {
+  dateInRange,
+  dateRangeFromQuery,
+  isValidDateRange,
+  isSingleDateRange,
+  todayIsoDate,
+} from '@/utils/date'
+import {
   DEFAULT_CALIBERS,
   consumedByTruck,
-  createId,
   groupTrucksByBrand,
   normalizeProductionBOutputs,
   normalizeProductionOutput,
@@ -424,26 +443,23 @@ import {
   truckConfiscations,
 } from '@/utils/production'
 
-const productionKey = 'mark-frigorifico-produccion-v2'
-const massBalanceKey = 'mark-frigorifico-balance-masa-v1'
-const actor = 'Operador Producción'
 const route = useRoute()
 const router = useRouter()
-const today = new Date().toISOString().slice(0, 10)
+const today = todayIsoDate()
 const { camiones: trucks, listarCamiones } = useCamiones()
-const productions = ref(loadArray(productionKey).map(normalizeProduction))
-const massBalances = ref(loadArray(massBalanceKey).map(normalizeMassBalance))
-const selectedDate = ref(typeof route.query.date === 'string' ? route.query.date : today)
+const { listarProducciones, crearProduccion, agregarCamiones } = useProducciones()
+const { listarBalances, crearBalance, eliminarBalance } = useBalancesMasa()
+const productions = ref([])
+const massBalances = ref([])
+const dateRange = reactive(dateRangeFromQuery(route.query, today))
 const historySearch = ref('')
 const historyStatus = ref('all')
 const feedback = reactive({ message: '', type: 'success' })
+const dateRangeValid = computed(() => isValidDateRange(dateRange.desde, dateRange.hasta))
+const singleDateSelected = computed(() => isSingleDateRange(dateRange))
 
 onMounted(async () => {
-  try {
-    await listarCamiones()
-  } catch (error) {
-    showFeedback(error.message, 'error')
-  }
+  await loadDateData()
 })
 
 const historyStatusOptions = [
@@ -456,6 +472,12 @@ const productionColumns = [
   { name: 'brand', label: 'Marca', field: 'brand', align: 'left' },
   { name: 'trucks', label: 'Camiones', field: (row) => row.trucks.length, align: 'left' },
   {
+    name: 'entryDate',
+    label: 'Fecha de entrada',
+    field: (row) => shortDate(row.date),
+    align: 'left',
+  },
+  {
     name: 'processStatus',
     label: 'Estado',
     field: (row) => processStatusLabel(row),
@@ -464,6 +486,7 @@ const productionColumns = [
 ]
 const productionCardFields = [
   { label: 'Camiones', value: (group) => number(group.trucks.length) },
+  { label: 'Fecha de entrada', value: (group) => shortDate(group.date) },
   { label: 'Via 1', value: (group) => number(whiteTruckCount(group)) },
   { label: 'Via 2', value: (group) => number(blackTruckCount(group)) },
 ]
@@ -471,7 +494,7 @@ const productionCardFields = [
 const showHistory = computed(() => false)
 const showMassBalance = computed(() => false)
 const showHistoryDetailPage = computed(() => false)
-const dailyGroups = computed(() => groupTrucksByBrand(trucks.value))
+const dailyGroups = computed(() => groupTrucksByBrand(trucks.value, dateRange))
 const filteredHistory = computed(() => {
   const term = historySearch.value.trim().toLocaleLowerCase('es')
   return [...productions.value]
@@ -511,13 +534,15 @@ const balanceSourceTrucks = computed(() =>
   trucks.value
     .filter(
       (truck) =>
-        productionDateForTruck(truck) === selectedDate.value &&
+        dateInRange(productionDateForTruck(truck), dateRange) &&
         Boolean(truck.lineConfirmedAt || truck.fin),
     )
     .sort((left, right) => Number(left.productionOrder || 0) - Number(right.productionOrder || 0)),
 )
 const selectedMassBalance = computed(() =>
-  massBalances.value.find((balance) => balance.date === selectedDate.value),
+  singleDateSelected.value
+    ? massBalances.value.find((balance) => balance.date === dateRange.desde)
+    : undefined,
 )
 const confirmedConsumption = computed(() => consumedByTruck(productions.value))
 const balanceLines = computed(() =>
@@ -550,30 +575,57 @@ const balanceTotals = computed(() =>
 )
 const dailyFinishedLots = computed(() =>
   productions.value.filter(
-    (production) => production.date === selectedDate.value && production.status === 'completed',
+    (production) => dateInRange(production.date, dateRange) && production.status === 'completed',
   ),
 )
 
-watch(productions, (value) => localStorage.setItem(productionKey, JSON.stringify(value)), {
-  deep: true,
-})
-watch(massBalances, (value) => localStorage.setItem(massBalanceKey, JSON.stringify(value)), {
-  deep: true,
-})
 watch(
-  selectedDate,
-  (date) =>
-    !showHistory.value &&
-    !showMassBalance.value &&
-    router.replace({ path: '/produccion', query: date === today ? {} : { date } }),
-)
-watch(
-  () => route.query.date,
-  (date) => {
-    const nextDate = typeof date === 'string' ? date : today
-    if (selectedDate.value !== nextDate) selectedDate.value = nextDate
+  () => [dateRange.desde, dateRange.hasta],
+  async (range, previousRange) => {
+    if (range.join('|') === previousRange.join('|') || !dateRangeValid.value) return
+    await loadDateData()
+    if (!showHistory.value && !showMassBalance.value) {
+      router.replace({
+        path: '/produccion',
+        query:
+          dateRange.desde === today && dateRange.hasta === today
+            ? {}
+            : { desde: dateRange.desde, hasta: dateRange.hasta },
+      })
+    }
   },
 )
+watch(
+  () => [route.query.desde, route.query.hasta, route.query.fecha, route.query.date],
+  () => {
+    const nextRange = dateRangeFromQuery(route.query, today)
+    if (dateRange.desde !== nextRange.desde) dateRange.desde = nextRange.desde
+    if (dateRange.hasta !== nextRange.hasta) dateRange.hasta = nextRange.hasta
+  },
+)
+
+async function loadDateData() {
+  productions.value = []
+  massBalances.value = []
+  try {
+    const [camiones, producciones, balances] = await Promise.all([
+      listarCamiones(dateRange),
+      listarProducciones(dateRange),
+      listarBalances(dateRange),
+    ])
+    productions.value = producciones.map(normalizeProduction)
+    massBalances.value = balances.map(normalizeMassBalance)
+    return camiones
+  } catch (error) {
+    showFeedback(error.message, 'error')
+    return []
+  }
+}
+
+function setTodayRange() {
+  dateRange.desde = today
+  dateRange.hasta = today
+}
 
 function normalizeProduction(production) {
   return {
@@ -599,15 +651,6 @@ function normalizeProduction(production) {
   }
 }
 
-function loadArray(key) {
-  try {
-    const parsed = JSON.parse(localStorage.getItem(key) || '[]')
-    return Array.isArray(parsed) ? parsed : []
-  } catch {
-    return []
-  }
-}
-
 function normalizeMassBalance(balance) {
   return {
     ...balance,
@@ -623,17 +666,16 @@ function normalizeMassBalance(balance) {
   }
 }
 
-function createMassBalance() {
+async function createMassBalance() {
   if (selectedMassBalance.value) return
+  if (!singleDateSelected.value)
+    return showFeedback('Seleccioná una sola fecha para crear el balance diario', 'error')
   if (balanceSourceTrucks.value.length === 0)
     return showFeedback('No hay lotes de entrada disponibles', 'error')
 
-  massBalances.value.push(
-    normalizeMassBalance({
-      id: createId(),
-      date: selectedDate.value,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
+  try {
+    const balance = await crearBalance({
+      date: dateRange.desde,
       lines: balanceSourceTrucks.value.map((truck) => ({
         truckId: truck.id,
         source: { ...truck },
@@ -643,16 +685,24 @@ function createMassBalance() {
         visceraPercent: 15,
         featherPercent: 8,
       })),
-    }),
-  )
-  showFeedback('Balance diario creado con los lotes de Balanza')
+    })
+    massBalances.value.push(normalizeMassBalance(balance))
+    showFeedback('Balance diario creado y guardado en la base de datos')
+  } catch (error) {
+    showFeedback(error.message, 'error')
+  }
 }
 
-function deleteMassBalance() {
-  const index = massBalances.value.findIndex((balance) => balance.date === selectedDate.value)
+async function deleteMassBalance() {
+  const index = massBalances.value.findIndex((balance) => balance.date === dateRange.desde)
   if (index < 0) return
-  massBalances.value.splice(index, 1)
-  showFeedback('Balance diario eliminado')
+  try {
+    await eliminarBalance(massBalances.value[index].id)
+    massBalances.value.splice(index, 1)
+    showFeedback('Balance diario eliminado')
+  } catch (error) {
+    showFeedback(error.message, 'error')
+  }
 }
 
 function calculateBalanceLine(line) {
@@ -681,7 +731,7 @@ function calculateBalanceLine(line) {
 
 function productionFor(group) {
   const matches = productions.value.filter(
-    (production) => production.date === selectedDate.value && production.brand === group.brand,
+    (production) => production.date === group.date && production.brand === group.brand,
   )
   const openProduction = matches.find((production) => production.status !== 'completed')
   if (openProduction) return openProduction
@@ -690,50 +740,52 @@ function productionFor(group) {
   return matches.at(-1)
 }
 
-function openProduction(group) {
+async function openProduction(group) {
   let production = productionFor(group)
   if (!production) {
     const previousProductions = productions.value.filter(
-      (item) => item.date === selectedDate.value && item.brand === group.brand,
+      (item) => item.date === group.date && item.brand === group.brand,
     )
     const assignedIds = new Set(previousProductions.flatMap((item) => item.truckIds))
     const productionTrucks = group.trucks.filter((truck) => !assignedIds.has(truck.id))
-    const sequence = previousProductions.length + 1
-    production = normalizeProduction({
-      id: createId(),
-      date: selectedDate.value,
-      brand: group.brand,
-      truckIds: productionTrucks.map((truck) => truck.id),
-      truckOrder: Object.fromEntries(
-        productionTrucks.map((truck, index) => [
-          truck.id,
-          Number(truck.productionOrder) || index + 1,
-        ]),
-      ),
-      truckSnapshots: Object.fromEntries(productionTrucks.map((truck) => [truck.id, { ...truck }])),
-      status: 'in_process',
-      requiredBirds: 0,
-      finished: defaultFinished(selectedDate.value, group.brand, sequence),
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    })
-    addEvent(production, 'Producción iniciada')
-    productions.value.push(production)
+    try {
+      production = normalizeProduction(
+        await crearProduccion({
+          fecha: group.date,
+          marca: group.brand,
+          producto: 'Pollo entero',
+          camionIds: productionTrucks.map((truck) => truck.id),
+        }),
+      )
+      productions.value.push(production)
+    } catch (error) {
+      showFeedback(error.message, 'error')
+      return
+    }
   } else if (production.status !== 'completed') {
     const addedTrucks = group.trucks.filter((truck) => !production.truckIds.includes(truck.id))
-    production.truckIds.push(...addedTrucks.map((truck) => truck.id))
-    addedTrucks.forEach((truck) => {
-      production.truckSnapshots[truck.id] = { ...truck }
-      production.truckOrder[truck.id] =
-        Number(truck.productionOrder) || Object.keys(production.truckOrder).length + 1
-    })
+    if (addedTrucks.length) {
+      try {
+        production = normalizeProduction(
+          await agregarCamiones(production.id, [
+            ...production.truckIds,
+            ...addedTrucks.map((truck) => truck.id),
+          ]),
+        )
+        const index = productions.value.findIndex((item) => item.id === production.id)
+        if (index >= 0) productions.value[index] = production
+      } catch (error) {
+        showFeedback(error.message, 'error')
+        return
+      }
+    }
   }
   router.push({
     path: '/produccion/proceso',
     query: {
       id: production.id,
       step: nextStepFor(production),
-      ...(selectedDate.value === today ? {} : { date: selectedDate.value }),
+      ...(group.date === today ? {} : { date: group.date }),
     },
   })
 }
@@ -743,11 +795,6 @@ function nextStepFor(production) {
   if (production.productionConfirmedAt) return 'consumo'
   if (production.entryConfirmedAt) return 'carga'
   return 'ingreso'
-}
-
-function addEvent(production, label) {
-  production.events.push({ id: createId(), label, actor, at: new Date().toISOString() })
-  production.updatedAt = new Date().toISOString()
 }
 
 function defaultFinished(date, brand, sequence = 1) {
@@ -765,7 +812,10 @@ function defaultFinished(date, brand, sequence = 1) {
 function goToDashboard() {
   router.push({
     path: '/produccion',
-    query: selectedDate.value === today ? {} : { date: selectedDate.value },
+    query:
+      dateRange.desde === today && dateRange.hasta === today
+        ? {}
+        : { desde: dateRange.desde, hasta: dateRange.hasta },
   })
 }
 

@@ -310,9 +310,14 @@
   .consumption-meter,
   .consumption-summary,
   .production-filters,
+  .date-range-filters,
   .mass-balance-inputs,
   .mass-balance-results,
   .mass-balance-summary {
+    grid-template-columns: 1fr;
+  }
+
+  .date-range-result-row {
     grid-template-columns: 1fr;
   }
 

@@ -91,12 +91,8 @@ const props = defineProps({
 })
 
 const bOutputs = computed(() =>
-  DEFAULT_CALIBERS.map(
-    (caliber) =>
-      props.production.outputsB?.find((output) => output.caliber === caliber) || {
-        caliber,
-        boxes: 0,
-      },
-  ),
+  props.production.outputsB?.length
+    ? props.production.outputsB
+    : DEFAULT_CALIBERS.map((caliber) => ({ caliber, boxes: 0 })),
 )
 </script>

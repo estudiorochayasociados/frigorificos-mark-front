@@ -29,13 +29,13 @@
           </div>
         </section>
         <section class="closure-summary-section">
-          <h3>Cajas normales</h3>
+          <h3>Cajas </h3>
           <div v-for="output in producedOutputs" :key="output.caliber" class="closure-summary-row">
             <span>Calibre {{ output.caliber }}</span
             ><strong>{{ number(output.boxes) }} cajas</strong>
           </div>
           <div class="closure-summary-row closure-summary-row--total">
-            <span>Total cajas normales</span><strong>{{ number(totalBoxes(production.outputs)) }}</strong>
+            <span>Total cajas</span><strong>{{ number(totalBoxes(production.outputs)) }}</strong>
           </div>
         </section>
         <section class="closure-summary-section">

@@ -15,7 +15,7 @@
             <q-td key="nombre" :props="props"
               ><strong>{{ props.row.nombre }}</strong></q-td
             >
-            <q-td key="correo" :props="props">{{ props.row.correo }}</q-td>
+            <q-td key="usuario" :props="props">{{ props.row.usuario }}</q-td>
             <q-td key="rol" :props="props"
               ><span class="status-pill status-neutral">{{ roleLabel(props.row.rol) }}</span></q-td
             >
@@ -39,7 +39,7 @@
           ><span class="user-avatar"><UserRound :size="19" /></span
         ></template>
         <template #mobile-title="{ row }">{{ row.nombre }}</template>
-        <template #mobile-subtitle="{ row }">{{ row.correo }} · {{ roleLabel(row.rol) }}</template>
+        <template #mobile-subtitle="{ row }">{{ row.usuario }} · {{ roleLabel(row.rol) }}</template>
         <template #mobile-status="{ row }"
           ><span :class="['status-pill', row.activo ? 'status-success' : 'status-warning']">{{
             row.activo ? 'Activo' : 'Inactivo'
@@ -73,9 +73,8 @@
               :rules="[(value) => !!value?.trim() || 'Campo obligatorio']"
             />
             <q-input
-              v-model="form.correo"
-              label="Correo *"
-              type="email"
+              v-model="form.usuario"
+              label="Usuario *"
               outlined
               dense
               :rules="[(value) => !!value?.trim() || 'Campo obligatorio']"
@@ -132,7 +131,7 @@ const feedback = reactive({ message: '', type: 'success' })
 const form = reactive({
   id: '',
   nombre: '',
-  correo: '',
+  usuario: '',
   contrasena: '',
   rol: 'operador',
   activo: true,
@@ -140,7 +139,7 @@ const form = reactive({
 
 const columns = [
   { name: 'nombre', label: 'Nombre', field: 'nombre', align: 'left' },
-  { name: 'correo', label: 'Correo', field: 'correo', align: 'left' },
+  { name: 'usuario', label: 'Usuario', field: 'usuario', align: 'left' },
   { name: 'rol', label: 'Rol', field: 'rol', align: 'left' },
   { name: 'activo', label: 'Estado', field: 'activo', align: 'left' },
   { name: 'actions', label: 'Acciones', field: 'actions', align: 'right' },
@@ -165,7 +164,7 @@ function openCreate() {
   Object.assign(form, {
     id: '',
     nombre: '',
-    correo: '',
+    usuario: '',
     contrasena: '',
     rol: 'operador',
     activo: true,
@@ -186,12 +185,12 @@ function passwordRule(value) {
 async function saveUser() {
   const datos = {
     nombre: form.nombre.trim(),
-    correo: form.correo.trim(),
+    usuario: form.usuario.trim(),
     contrasena: form.contrasena,
     rol: form.rol,
     activo: form.activo,
   }
-  if (!datos.nombre || !datos.correo || (!form.id && datos.contrasena.length < 6)) return
+  if (!datos.nombre || !datos.usuario || (!form.id && datos.contrasena.length < 6)) return
 
   saving.value = true
   try {

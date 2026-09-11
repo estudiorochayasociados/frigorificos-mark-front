@@ -80,7 +80,7 @@
 .mass-balance-trace-head,
 .mass-balance-trace-row {
   display: grid;
-  grid-template-columns: 0.9fr 1.15fr 0.9fr repeat(6, minmax(82px, 0.7fr));
+  grid-template-columns: 0.9fr 0.9fr 1.15fr 0.9fr repeat(6, minmax(82px, 0.7fr));
   min-width: 980px;
 }
 
@@ -244,6 +244,30 @@
 }
 
 .mass-balance-empty span {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.date-range-results {
+  margin-top: 18px;
+}
+
+.date-range-result-list {
+  display: grid;
+  gap: 8px;
+  padding: 0 18px 18px;
+}
+
+.date-range-result-row {
+  display: grid;
+  grid-template-columns: 150px minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  padding: 10px 0;
+  border-top: 1px solid var(--line);
+}
+
+.date-range-result-row span {
   color: var(--muted);
   font-size: 12px;
 }
@@ -517,4 +541,3 @@
 .feedback-toast--error svg {
   color: #ff8a83;
 }
-
