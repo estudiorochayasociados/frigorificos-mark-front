@@ -45,8 +45,8 @@
     border-radius: 13px;
   }
 
-  .raw-material-table-row:not(.raw-material-table-row--total) > div,
-  .consumption-table-row:not(.consumption-table-row--total) > div:first-child {
+  .raw-material-table-row:not(.raw-material-table-row--total) > .truck-cell,
+  .consumption-table-row:not(.consumption-table-row--total) > .consumption-truck {
     grid-column: 1 / -1;
   }
 
@@ -112,6 +112,15 @@
 @media (max-width: 700px) {
   .page-content {
     padding: 22px 14px 90px;
+  }
+
+  .consumption-planner-control {
+    grid-template-columns: 1fr;
+  }
+
+  .consumption-required-input {
+    grid-column: auto;
+    width: 100%;
   }
 
   .data-card-header {
@@ -311,12 +320,14 @@
   .output-table-head,
   .output-table-row,
   .output-table-total {
-    grid-template-columns: 1fr 145px;
+    grid-template-columns: 110px minmax(0, 1fr) 145px;
     gap: 8px;
   }
 
   .consumption-meter,
   .consumption-summary,
+  .consumption-planner,
+  .output-tables-grid,
   .production-filters,
   .date-range-filters,
   .mass-balance-inputs,
@@ -365,6 +376,13 @@
   .consumption-table-head,
   .consumption-table-row {
     min-width: 0;
+  }
+
+  .consumption-allocation-status {
+    padding-top: 12px;
+    padding-left: 0;
+    border-top: 1px solid var(--line);
+    border-left: 0;
   }
 
   .mass-balance-source,

@@ -248,6 +248,10 @@ button {
   transition: 160ms ease;
 }
 
+.q-card__actions {
+  gap: 10px;
+}
+
 .primary-action {
   border: 1px solid var(--brand);
   background: var(--brand);

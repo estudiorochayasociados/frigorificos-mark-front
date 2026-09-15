@@ -151,8 +151,7 @@
                   <span>Muertos</span><strong>{{ number(line.source.muertos) }}</strong>
                 </div>
                 <div>
-                  <span>Decomisos + vísc.</span
-                  ><strong>{{ number(confiscationsFor(line.source)) }}</strong>
+                  <span>Decomisos</span><strong>{{ number(confiscationsFor(line.source)) }}</strong>
                 </div>
                 <div>
                   <span>Consumo Zona 2</span><strong>{{ number(line.birdsToProcess) }}</strong>

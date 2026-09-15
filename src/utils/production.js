@@ -31,7 +31,7 @@ export function truckBirds(truck) {
 }
 
 export function truckConfiscations(truck) {
-  return Math.max(0, Number(truck?.decomisos || 0)) + Math.max(0, Number(truck?.decomisosVisc || 0))
+  return Math.max(0, Number(truck?.decomisos || 0))
 }
 
 export function truckLosses(truck) {
@@ -94,42 +94,24 @@ export function consumedByTruck(productions, excludedProductionId = null) {
   }, {})
 }
 
-export function proposeFifoConsumption(
-  trucks,
-  requiredBirds,
-  alreadyConsumed = {},
-  truckOrder = {},
-) {
-  let remaining = Math.max(0, Number(requiredBirds || 0))
-  const result = {}
-  ;[...trucks.entries()]
-    .sort(([leftIndex, left], [rightIndex, right]) => {
-      const leftOrder = Number(truckOrder[left.id] || 0)
-      const rightOrder = Number(truckOrder[right.id] || 0)
-      if (leftOrder > 0 && rightOrder > 0 && leftOrder !== rightOrder) return leftOrder - rightOrder
-      if (leftOrder > 0 && rightOrder <= 0) return -1
-      if (rightOrder > 0 && leftOrder <= 0) return 1
-      const leftDate = `${productionDateForTruck(left)} ${left.horarioLlegada || '99:99'}`
-      const rightDate = `${productionDateForTruck(right)} ${right.horarioLlegada || '99:99'}`
-      return leftDate.localeCompare(rightDate) || rightIndex - leftIndex
-    })
-    .forEach(([, truck]) => {
-      const available = Math.max(
-        0,
-        truckAvailableBirds(truck) - Number(alreadyConsumed[truck.id] || 0),
-      )
-      const quantity = Math.min(available, remaining)
-      result[truck.id] = quantity
-      remaining -= quantity
-    })
-  return result
-}
-
 export function totalOutputBoxes(outputs) {
   return (outputs || []).reduce(
     (total, output) => total + Math.max(0, Number(output.boxes || 0)),
     0,
   )
+}
+
+export function hasManualOutputBirds(output) {
+  return Boolean(output?.birdsManual) && output?.birds !== undefined && output?.birds !== null
+}
+
+export function outputBirds(output) {
+  if (hasManualOutputBirds(output)) return Math.max(0, Number(output.birds || 0))
+  return Math.max(0, Number(output?.boxes || 0)) * Math.max(0, Number(output?.caliber || 0))
+}
+
+export function totalOutputBirds(outputs) {
+  return (outputs || []).reduce((total, output) => total + outputBirds(output), 0)
 }
 
 export function totalOutputBoxesB(outputs) {

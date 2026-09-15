@@ -45,7 +45,7 @@ export function calculateTruckMetrics(truck) {
     promedioGranja,
     promedioReal,
     promedioPlanta,
-    diferenciaAvesGranjaPlanta: avesGranja > 0 ? avesGranja - aves : null,
+    diferenciaAvesGranjaPlanta: avesGranja > 0 ? aves - avesGranja : null,
     kgMuertos: promedio * muertos,
     kgDecomisados: promedio * decomisos,
     porcentajeMerma: safeDivide(diferenciaNetaGranjaPlanta, netoGranja),

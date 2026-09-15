@@ -111,13 +111,18 @@
             <div class="data-card-header">
               <div>
                 <h2>Balance de masa</h2>
-                <p>Entrada + absorción − subproductos − decomiso, contrastado con la salida real.</p>
+                <p>
+                  Entrada + absorción − subproductos − decomiso, contrastado con la salida real.
+                </p>
               </div>
             </div>
             <div class="mass-balance-metrics">
-              <article><span>Entrada</span><strong>{{ kgValue(balanceTotals.inputKg) }} kg</strong></article>
               <article>
-                <span>Absorción máxima 8%</span><strong>{{ kgValue(balanceTotals.absorptionKg) }} kg</strong>
+                <span>Entrada</span><strong>{{ kgValue(balanceTotals.inputKg) }} kg</strong>
+              </article>
+              <article>
+                <span>Absorción máxima 8%</span
+                ><strong>{{ kgValue(balanceTotals.absorptionKg) }} kg</strong>
               </article>
               <article class="mass-balance-metric-input">
                 <NonNegativeInput
@@ -130,20 +135,27 @@
                   @blur="scheduleBalanceSave"
                 />
               </article>
-              <article><span>Decomiso</span><strong>{{ kgValue(balanceTotals.confiscationKg) }} kg</strong></article>
+              <article>
+                <span>Decomiso</span><strong>{{ kgValue(balanceTotals.confiscationKg) }} kg</strong>
+              </article>
               <article>
                 <span>Salida</span><strong>{{ kgValue(balanceTotals.yieldOutputKg) }} kg</strong>
               </article>
             </div>
             <div class="mass-balance-reconciliation">
               <article>
-                <span>Resultado del balance</span><strong>{{ kgValue(balanceTotals.balanceOutputKg) }} kg</strong>
+                <span>Resultado del balance</span
+                ><strong>{{ kgValue(balanceTotals.balanceOutputKg) }} kg</strong>
               </article>
               <span class="mass-balance-operator">=</span>
               <article>
                 <span>Salida</span><strong>{{ kgValue(balanceTotals.yieldOutputKg) }} kg</strong>
               </article>
-              <article :class="{ 'mass-balance-reconciliation--difference': balanceTotals.differenceKg !== 0 }">
+              <article
+                :class="{
+                  'mass-balance-reconciliation--difference': balanceTotals.differenceKg !== 0,
+                }"
+              >
                 <span>Diferencia</span><strong>{{ kgValue(balanceTotals.differenceKg) }} kg</strong>
               </article>
             </div>
@@ -159,7 +171,7 @@
               <span>Fecha de entrada</span><span>Lote</span><span>DTE</span><span>Camión</span
               ><span>Aves DTE</span><span>A faenar</span><span>Peso prom.</span
               ><span>Kg entrada</span><span>Rinde</span><span>Peso salida</span
-              ><span>Decomisos + vísc.</span>
+              ><span>Decomisos</span>
             </div>
             <div
               v-for="line in balanceLines"
@@ -471,7 +483,7 @@ const balanceTraceCardFields = [
     label: 'Peso salida',
     value: (line) => (line.outputKg === null ? '-' : `${decimal(line.outputKg)} kg`),
   },
-  { label: 'Decomisos + vísc.', value: (line) => number(confiscationsFor(line.source)) },
+  { label: 'Decomisos', value: (line) => number(confiscationsFor(line.source)) },
 ]
 
 const showHistory = computed(() => false)
@@ -555,17 +567,15 @@ const balanceProductions = computed(() => {
   const truckIds = new Set(balanceLines.value.map((line) => line.record.truckId))
   return productions.value.filter(
     (production) =>
-      production.productionConfirmedAt && production.truckIds.some((truckId) => truckIds.has(truckId)),
+      production.productionConfirmedAt &&
+      production.truckIds.some((truckId) => truckIds.has(truckId)),
   )
 })
 const balanceTotals = computed(() => {
   const inputKg = balanceLines.value.reduce((total, line) => total + line.inputKg, 0)
   const absorptionKg = inputKg * ABSORPTION_RATE
   const byproductsKg = nonNegative(selectedMassBalance.value?.general?.subproductsKg)
-  const confiscationKg = balanceLines.value.reduce(
-    (total, line) => total + line.confiscationKg,
-    0,
-  )
+  const confiscationKg = balanceLines.value.reduce((total, line) => total + line.confiscationKg, 0)
   const yieldOutputKg = balanceProductions.value.length
     ? balanceProductions.value.reduce((total, production) => {
         const productionTrucks = production.truckIds

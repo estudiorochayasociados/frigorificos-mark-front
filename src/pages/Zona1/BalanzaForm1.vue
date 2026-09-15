@@ -36,7 +36,20 @@
                 :rules="[(value) => !!value || 'Campo obligatorio']"
                 emit-value
                 map-options
-              />
+              >
+                <template #append>
+                  <button
+                    class="select-add-action"
+                    type="button"
+                    aria-label="Crear marca comercial"
+                    title="Crear marca comercial"
+                    @mousedown.stop
+                    @click.stop="openCreateBrand"
+                  >
+                    <Plus :size="18" />
+                  </button>
+                </template>
+              </q-select>
             </div>
             <div class="form-grid form-grid-spaced">
               <q-input
@@ -193,7 +206,7 @@
                 <span>Promedio planta</span><strong>{{ avg(formMetrics.promedioPlanta) }}</strong>
               </div>
               <div>
-                <span>Dif. aves origen - planta</span
+                <span>Dif. aves planta - origen</span
                 ><strong>{{ birds(formMetrics.diferenciaAvesGranjaPlanta) }}</strong>
               </div>
             </div>
@@ -213,6 +226,51 @@
       </q-form>
       <div v-if="error" class="feedback-toast feedback-toast--error">{{ error }}</div>
     </div>
+
+    <q-dialog v-model="createBrandOpen" persistent>
+      <q-card class="brand-dialog">
+        <q-card-section>
+          <div class="text-h6">Nueva marca comercial</div>
+          <div class="brand-dialog-description">
+            Se agregará al listado y quedará seleccionada para este ingreso.
+          </div>
+        </q-card-section>
+        <q-form @submit.prevent="createBrand">
+          <q-card-section class="q-pt-none brand-dialog-fields">
+            <q-input
+              v-model="brandForm.nombre"
+              label="Nombre *"
+              outlined
+              dense
+              autofocus
+              :rules="[(value) => !!value?.trim() || 'Campo obligatorio']"
+            />
+            <q-input
+              v-model="brandForm.codigo"
+              label="Código *"
+              outlined
+              dense
+              class="uppercase-field"
+              :rules="[(value) => !!value?.trim() || 'Campo obligatorio']"
+            />
+            <div v-if="brandError" class="brand-dialog-error" role="alert">{{ brandError }}</div>
+          </q-card-section>
+          <q-card-actions align="right">
+            <button
+              class="secondary-action"
+              type="button"
+              :disabled="creatingBrand"
+              @click="closeCreateBrand"
+            >
+              Cancelar
+            </button>
+            <button class="primary-action" type="submit" :disabled="creatingBrand">
+              <Save :size="18" /> {{ creatingBrand ? 'Guardando...' : 'Crear y seleccionar' }}
+            </button>
+          </q-card-actions>
+        </q-form>
+      </q-card>
+    </q-dialog>
   </q-page>
 </template>
 
@@ -220,7 +278,7 @@
 import PageHeader from '@/components/PageHeader.vue'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Save, X } from '@lucide/vue'
+import { Plus, Save, X } from '@lucide/vue'
 import NonNegativeInput from '@/components/NonNegativeInput.vue'
 import { useCamiones } from '@/composables/useCamiones'
 import { useMarcasComerciales } from '@/composables/useMarcasComerciales'
@@ -237,10 +295,19 @@ const route = useRoute()
 const router = useRouter()
 const form = reactive(emptyTruckForm())
 const { obtenerCamion, crearCamion, actualizarCamion } = useCamiones()
-const { marcas, cargando: cargandoMarcas, listarMarcasComerciales } = useMarcasComerciales()
+const {
+  marcas,
+  cargando: cargandoMarcas,
+  listarMarcasComerciales,
+  crearMarcaComercial,
+} = useMarcasComerciales()
 const cargando = ref(Boolean(route.params.id))
 const guardando = ref(false)
 const error = ref('')
+const createBrandOpen = ref(false)
+const creatingBrand = ref(false)
+const brandError = ref('')
+const brandForm = reactive({ nombre: '', codigo: '' })
 
 onMounted(async () => {
   try {
@@ -303,8 +370,37 @@ async function saveTruck() {
   }
 }
 
+function openCreateBrand() {
+  Object.assign(brandForm, { nombre: '', codigo: '' })
+  brandError.value = ''
+  createBrandOpen.value = true
+}
+
+function closeCreateBrand() {
+  createBrandOpen.value = false
+}
+
+async function createBrand() {
+  const datos = { nombre: brandForm.nombre.trim(), codigo: brandForm.codigo.trim() }
+  if (!datos.nombre || !datos.codigo) return
+
+  creatingBrand.value = true
+  brandError.value = ''
+  try {
+    const marca = await crearMarcaComercial(datos)
+    await listarMarcasComerciales()
+    form.marcaComercialId = marca.id
+    closeCreateBrand()
+  } catch (exception) {
+    brandError.value = exception.message
+  } finally {
+    creatingBrand.value = false
+  }
+}
+
 function goToList() {
-  router.push('/balanza')
+  const returnTo = String(route.query.returnTo || '')
+  router.push(returnTo.startsWith('/produccion/proceso') ? returnTo : '/balanza')
 }
 
 function kg(value) {
@@ -319,3 +415,43 @@ function birds(value) {
   return value == null ? '-' : `${formatBirds(value)} aves`
 }
 </script>
+
+<style scoped lang="scss">
+.select-add-action {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  border: 0;
+  border-radius: 6px;
+  background: var(--soft-red);
+  color: var(--brand);
+  cursor: pointer;
+}
+
+.select-add-action:hover,
+.select-add-action:focus-visible {
+  background: var(--brand);
+  color: white;
+}
+
+.brand-dialog {
+  width: min(440px, calc(100vw - 32px));
+}
+
+.brand-dialog-description {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 0.875rem;
+}
+
+.brand-dialog-fields {
+  display: grid;
+  gap: 14px;
+}
+
+.brand-dialog-error {
+  color: var(--brand);
+  font-size: 0.875rem;
+}
+</style>

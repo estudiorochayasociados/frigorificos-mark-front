@@ -218,7 +218,8 @@ async function saveTruck() {
 }
 
 function goToList() {
-  router.push('/balanza')
+  const returnTo = String(route.query.returnTo || '')
+  router.push(returnTo.startsWith('/produccion/proceso') ? returnTo : '/balanza')
 }
 
 function kg(value) {

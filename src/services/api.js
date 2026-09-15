@@ -1,7 +1,7 @@
 const authTokenKey = 'mark-auth-token'
-// const apiBaseUrl = (import.meta.env.VITE_API_URL || 'http://26.103.1.82:3000/api').replace(/\/$/, '')
+const apiBaseUrl = (import.meta.env.VITE_API_URL || 'http://26.103.1.82:3000/api').replace(/\/$/, '')
 // const apiBaseUrl = (import.meta.env.VITE_API_URL || 'http://26.253.151.141:3000/api').replace(/\/$/, '')
-const apiBaseUrl = (import.meta.env.VITE_API_URL || 'https://mark.cloud.estudiorocha.ar/api').replace(/\/$/, '')
+// const apiBaseUrl = (import.meta.env.VITE_API_URL || 'https://mark.cloud.estudiorocha.ar/api').replace(/\/$/, '')
 
 export async function apiRequest(path, options = {}) {
   const headers = new Headers(options.headers || {})

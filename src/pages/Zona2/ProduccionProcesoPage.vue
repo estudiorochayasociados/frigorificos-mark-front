@@ -42,19 +42,22 @@
           :available-for-truck="availableForTruck"
           :truck-use-order="truckUseOrder"
           @confirm="confirmEntry"
+          @edit-truck="goToTruckEntry"
         />
 
         <ProductionCargaStep
           v-if="currentStep === 'carga'"
           :production="activeProduction"
-          :product-options="productOptions"
           :number="number"
+          :percentage="percentage"
           :total-boxes="totalBoxes"
+          :yield-summary="yieldSummary"
           @confirm-output="confirmOutput"
+          @reset-output-birds="resetOutputBirds"
           @update-output-b-boxes="updateOutputBBoxes"
           @update-output-b-trozado-boxes="updateOutputBTrozadoBoxes"
+          @update-output-birds="updateOutputBirds"
           @update-output-boxes="updateOutputBoxes"
-          @update-product="updateProduct"
         />
 
         <ProductionConsumoStep
@@ -64,13 +67,10 @@
           :selected-consumption="selectedConsumption"
           :consumption-difference="consumptionDifference"
           :number="number"
-          :signed-number="signedNumber"
           :available-for-truck="availableForTruck"
           :truck-use-order="truckUseOrder"
-          @apply-fifo="applyFifo"
           @confirm-consumption="confirmConsumption"
           @update-consumption="updateConsumption"
-          @update-required-birds="updateRequiredBirds"
         />
 
         <ProductionCierreStep
@@ -121,9 +121,9 @@ import {
   DEFAULT_CALIBERS,
   calcularRindeProduccion,
   consumedByTruck,
-  proposeFifoConsumption,
   normalizeProductionBOutputs,
   normalizeProductionOutput,
+  totalOutputBirds,
   totalOutputBoxes,
   truckAvailableBirds,
   truckBirds,
@@ -155,18 +155,11 @@ onMounted(async () => {
       const production = await obtenerProduccion(route.query.id)
       productions.value = [normalizeProduction(production)]
     }
-    if (
-      activeProduction.value?.productionConfirmedAt &&
-      !activeProduction.value.consumptionConfirmedAt
-    ) {
-      applyFifo(false)
-    }
   } catch (error) {
     showFeedback(error.message, 'error')
   }
 })
 
-const productOptions = ['Pollo entero']
 const flowSteps = [
   { number: '1', value: 'ingreso', label: 'Ingreso' },
   { number: '2', value: 'carga', label: 'Producción' },
@@ -284,10 +277,6 @@ async function confirmEntry() {
   }
 }
 
-function updateProduct(value) {
-  activeProduction.value.product = value
-}
-
 function updateOutputBoxes(caliber, value) {
   const output = activeProduction.value.outputs.find((item) => item.caliber === caliber)
   if (output) output.boxes = value
@@ -304,8 +293,30 @@ function updateOutputBTrozadoBoxes(caliber, value) {
   if (output) output.boxes = value
 }
 
-function updateRequiredBirds(value) {
-  activeProduction.value.requiredBirds = value
+function updateOutputBirds(type, caliber, value) {
+  const outputs =
+    type === 'normal'
+      ? activeProduction.value.outputs
+      : type === 'b'
+        ? activeProduction.value.outputsB
+        : activeProduction.value.outputsBTrozado
+  const output = outputs.find((item) => item.caliber === caliber)
+  if (!output) return
+  output.birds = value
+  output.birdsManual = true
+}
+
+function resetOutputBirds(type, caliber) {
+  const outputs =
+    type === 'normal'
+      ? activeProduction.value.outputs
+      : type === 'b'
+        ? activeProduction.value.outputsB
+        : activeProduction.value.outputsBTrozado
+  const output = outputs.find((item) => item.caliber === caliber)
+  if (!output) return
+  delete output.birds
+  output.birdsManual = false
 }
 
 function updateConsumption(truckId, value) {
@@ -332,43 +343,45 @@ async function confirmOutput() {
   )
   if (invalidOutputBTrozado)
     return showFeedback('Las cajas B de pollo trozado deben ser números enteros positivos', 'error')
+  const invalidBirdAdjustment = [
+    ...production.outputs,
+    ...production.outputsB,
+    ...production.outputsBTrozado,
+  ].some(
+    (output) =>
+      output.birdsManual && (!Number.isInteger(Number(output.birds)) || Number(output.birds) < 0),
+  )
+  if (invalidBirdAdjustment)
+    return showFeedback('Las aves ajustadas deben ser números enteros positivos', 'error')
   if (totalBoxes(production.outputs) <= 0)
     return showFeedback('Ingresa al menos una caja producida', 'error')
+  const requiredBirds =
+    totalOutputBirds(production.outputs) +
+    totalOutputBirds(production.outputsB) +
+    totalOutputBirds(production.outputsBTrozado)
+  if (requiredBirds > activeTotals.value.available)
+    return showFeedback('Las aves calculadas superan la disponibilidad de los camiones', 'error')
   try {
     const updated = await confirmarProduccion(production.id, {
       producto: production.product,
-      salidas: production.outputs.map((output) => ({
-        calibre: output.caliber,
-        cajas: Number(output.boxes || 0),
-      })),
-      salidasB: production.outputsB.map((output) => ({
-        calibre: output.caliber,
-        cajas: Number(output.boxes || 0),
-      })),
-      salidasBTrozado: production.outputsBTrozado.map((output) => ({
-        calibre: output.caliber,
-        cajas: Number(output.boxes || 0),
-      })),
-      avesRequeridas: Number(production.requiredBirds || activeTotals.value.available),
+      salidas: production.outputs.map(outputPayload),
+      salidasB: production.outputsB.map(outputPayload),
+      salidasBTrozado: production.outputsBTrozado.map(outputPayload),
+      avesRequeridas: requiredBirds,
     })
     replaceProduction(updated)
-    applyFifo(false)
     goToStep('consumo')
   } catch (error) {
     showFeedback(error.message, 'error')
   }
 }
 
-function applyFifo(notify = true) {
-  const production = activeProduction.value
-  if (!production) return
-  production.consumption = proposeFifoConsumption(
-    activeTrucks.value,
-    production.requiredBirds,
-    priorConsumption.value,
-    production.truckOrder,
-  )
-  if (notify) showFeedback('Consumo FIFO recalculado')
+function outputPayload(output) {
+  return {
+    calibre: output.caliber,
+    cajas: Number(output.boxes || 0),
+    ...(output.birdsManual ? { aves: Number(output.birds || 0), avesManual: true } : {}),
+  }
 }
 
 async function confirmConsumption() {
@@ -489,6 +502,14 @@ function goToDashboard() {
   })
 }
 
+function goToTruckEntry({ truck, step }) {
+  router.push({
+    name: step === 2 ? 'balanza-form2' : 'balanza-form1',
+    params: { id: String(truck.id) },
+    query: { returnTo: route.fullPath },
+  })
+}
+
 function truckDataFor(production, truckId) {
   return production?.truckSnapshots?.[truckId] || trucks.value.find((truck) => truck.id === truckId)
 }
@@ -544,11 +565,6 @@ function number(value) {
 
 function nonNegative(value) {
   return Math.max(0, Number(value || 0))
-}
-
-function signedNumber(value) {
-  const numeric = Number(value || 0)
-  return `${numeric > 0 ? '+' : ''}${numeric.toLocaleString('es-AR')}`
 }
 
 function percentage(value) {
@@ -795,7 +811,7 @@ function showFeedback(message, type = 'success') {
 
   :deep(.output-table-row--total) {
     grid-column: 1 / -1;
-    grid-template-columns: 1fr auto;
+    grid-template-columns: 1fr auto auto;
     min-height: 52px;
     padding: 0 15px;
     border: 1px solid var(--line);
