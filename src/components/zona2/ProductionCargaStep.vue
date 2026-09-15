@@ -2,7 +2,10 @@
   <section class="production-output-step">
     <header class="production-mobile-heading">
       <span>02</span>
-      <div><h2>Producción por calibre</h2><p>Registra únicamente las cajas terminadas.</p></div>
+      <div>
+        <h2>Producción por calibre</h2>
+        <p>Registra únicamente las cajas terminadas.</p>
+      </div>
     </header>
     <div class="production-step-toolbar">
       <q-select
@@ -37,9 +40,7 @@
       </div>
     </div>
 
-    <div class="output-table-group-title" aria-label="Listado de cajas B por calibre">
-      Cajas B
-    </div>
+    <div class="output-table-group-title" aria-label="Listado de cajas B por calibre">Cajas B</div>
     <div class="output-table output-table--b">
       <div class="output-table-head"><span>Calibre</span><span>Cajas B</span></div>
       <div v-for="output in bOutputs" :key="output.caliber" class="output-table-row">
@@ -63,6 +64,36 @@
       </div>
     </div>
 
+    <div
+      class="output-table-group-title"
+      aria-label="Listado de cajas B de pollo trozado por calibre"
+    >
+      Cajas B · Pollo trozado
+    </div>
+    <div class="output-table output-table--b">
+      <div class="output-table-head"><span>Calibre</span><span>Cajas B · Pollo trozado</span></div>
+      <div v-for="output in bTrozadoOutputs" :key="output.caliber" class="output-table-row">
+        <div>
+          <span class="output-caliber-label">Calibre {{ output.caliber }}</span>
+        </div>
+        <div class="output-quantity-cell">
+          <NonNegativeInput
+            :model-value="output.boxes"
+            class="output-quantity-input"
+            outlined
+            dense
+            :readonly="production.status === 'completed'"
+            :aria-label="`Cajas B de pollo trozado, calibre ${output.caliber}`"
+            @update:model-value="$emit('updateOutputBTrozadoBoxes', output.caliber, $event)"
+          />
+        </div>
+      </div>
+      <div class="output-table-row output-table-row--total">
+        <span>Total cajas B · Pollo trozado</span
+        ><strong>{{ number(totalBoxes(bTrozadoOutputs)) }}</strong>
+      </div>
+    </div>
+
     <div class="production-stage-actions">
       <button class="primary-action" type="button" @click="$emit('confirmOutput')">
         Confirmar producción <ArrowRight :size="17" />
@@ -80,6 +111,7 @@ import { DEFAULT_CALIBERS } from '@/utils/production'
 defineEmits([
   'confirmOutput',
   'updateOutputBBoxes',
+  'updateOutputBTrozadoBoxes',
   'updateOutputBoxes',
   'updateProduct',
 ])
@@ -93,6 +125,12 @@ const props = defineProps({
 const bOutputs = computed(() =>
   props.production.outputsB?.length
     ? props.production.outputsB
+    : DEFAULT_CALIBERS.map((caliber) => ({ caliber, boxes: 0 })),
+)
+
+const bTrozadoOutputs = computed(() =>
+  props.production.outputsBTrozado?.length
+    ? props.production.outputsBTrozado
     : DEFAULT_CALIBERS.map((caliber) => ({ caliber, boxes: 0 })),
 )
 </script>

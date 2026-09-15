@@ -2,7 +2,10 @@
   <section class="production-closure-step">
     <header class="production-mobile-heading">
       <span>04</span>
-      <div><h2>Cierre y stock</h2><p>Verifica el resumen e identifica el lote terminado.</p></div>
+      <div>
+        <h2>Cierre y stock</h2>
+        <p>Verifica el resumen e identifica el lote terminado.</p>
+      </div>
     </header>
     <div class="closure-grid">
       <div class="closure-summary">
@@ -29,7 +32,25 @@
           </div>
         </section>
         <section class="closure-summary-section">
-          <h3>Cajas </h3>
+          <h3>Rinde</h3>
+          <div class="closure-summary-row">
+            <span>Faena</span><strong>{{ number(yieldSummary.faenaKg) }} kg</strong>
+          </div>
+          <div class="closure-summary-row">
+            <span>Neto granja</span><strong>{{ number(yieldSummary.netoGranja) }} kg</strong>
+          </div>
+          <div class="closure-summary-row closure-summary-row--total">
+            <span>Rinde granja</span><strong>{{ percentage(yieldSummary.rindeGranja) }}</strong>
+          </div>
+          <div class="closure-summary-row">
+            <span>Neto planta</span><strong>{{ number(yieldSummary.netoPlanta) }} kg</strong>
+          </div>
+          <div class="closure-summary-row closure-summary-row--total">
+            <span>Rinde planta</span><strong>{{ percentage(yieldSummary.rindePlanta) }}</strong>
+          </div>
+        </section>
+        <section class="closure-summary-section">
+          <h3>Cajas</h3>
           <div v-for="output in producedOutputs" :key="output.caliber" class="closure-summary-row">
             <span>Calibre {{ output.caliber }}</span
             ><strong>{{ number(output.boxes) }} cajas</strong>
@@ -46,6 +67,21 @@
           </div>
           <div class="closure-summary-row closure-summary-row--total">
             <span>Total cajas B</span><strong>{{ number(totalBoxes(production.outputsB)) }}</strong>
+          </div>
+        </section>
+        <section class="closure-summary-section">
+          <h3>Cajas B · Pollo trozado</h3>
+          <div
+            v-for="output in producedOutputsBTrozado"
+            :key="output.caliber"
+            class="closure-summary-row"
+          >
+            <span>Calibre B {{ output.caliber }}</span
+            ><strong>{{ number(output.boxes) }} cajas</strong>
+          </div>
+          <div class="closure-summary-row closure-summary-row--total">
+            <span>Total cajas B · Pollo trozado</span
+            ><strong>{{ number(totalBoxes(production.outputsBTrozado)) }}</strong>
           </div>
         </section>
       </div>
@@ -87,8 +123,9 @@
             <strong>Alta de stock automática</strong
             ><span
               >Se generarán {{ number(totalBoxes(production.outputs)) }} cajas normales y
-              {{ number(totalBoxes(production.outputsB)) }} cajas B, trazadas al lote
-              {{ production.finished.lot || '-' }}.</span
+              {{ number(totalBoxes(production.outputsB)) }} cajas B y
+              {{ number(totalBoxes(production.outputsBTrozado)) }} cajas B de pollo trozado,
+              trazadas al lote {{ production.finished.lot || '-' }}.</span
             >
           </div>
         </div>
@@ -119,8 +156,11 @@ defineProps({
   activeTotals: { type: Object, required: true },
   producedOutputs: { type: Array, required: true },
   producedOutputsB: { type: Array, required: true },
+  producedOutputsBTrozado: { type: Array, required: true },
   selectedConsumption: { type: Number, required: true },
+  yieldSummary: { type: Object, required: true },
   number: { type: Function, required: true },
+  percentage: { type: Function, required: true },
   totalBoxes: { type: Function, required: true },
 })
 </script>

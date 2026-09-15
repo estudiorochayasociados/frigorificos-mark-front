@@ -635,6 +635,9 @@ function normalizeProduction(production) {
       normalizeProductionOutput(production.outputs, caliber),
     ),
     outputsB: normalizeProductionBOutputs(production.outputsB),
+    outputsBTrozado: DEFAULT_CALIBERS.map((caliber) =>
+      normalizeProductionOutput(production.outputsBTrozado, caliber),
+    ),
     consumption: production.consumption || {},
     truckOrder:
       production.truckOrder ||

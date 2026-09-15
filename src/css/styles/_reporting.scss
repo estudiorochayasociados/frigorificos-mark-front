@@ -2,6 +2,77 @@
   margin-top: 22px;
 }
 
+.mass-balance-summary-card {
+  margin: 18px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #fff;
+}
+
+.mass-balance-summary-card .data-card-header {
+  padding: 16px 18px;
+}
+
+.mass-balance-metrics {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  border-top: 1px solid var(--line);
+}
+
+.mass-balance-metrics article,
+.mass-balance-reconciliation article {
+  display: grid;
+  gap: 5px;
+  padding: 14px 16px;
+}
+
+.mass-balance-metrics .mass-balance-metric-input {
+  display: block;
+  padding: 7px 12px;
+}
+
+.mass-balance-metrics article + article {
+  border-left: 1px solid var(--line);
+}
+
+.mass-balance-metrics span,
+.mass-balance-reconciliation span {
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.mass-balance-metrics strong,
+.mass-balance-reconciliation strong {
+  color: var(--ink);
+  font-size: 16px;
+}
+
+.mass-balance-reconciliation {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 28px minmax(0, 1fr) minmax(0, 1fr);
+  align-items: stretch;
+  border-top: 1px solid var(--line);
+  background: #fafafa;
+}
+
+.mass-balance-operator {
+  display: grid;
+  place-items: center;
+  color: var(--ink) !important;
+  font-size: 18px !important;
+}
+
+.mass-balance-reconciliation article {
+  border-left: 1px solid var(--line);
+}
+
+.mass-balance-reconciliation--difference {
+  background: #fff8ed;
+}
+
 .mass-balance-summary {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
@@ -74,18 +145,19 @@
 
 .mass-balance-trace-table {
   overflow-x: auto;
-  padding: 0 18px 14px;
+  border-top: 1px solid var(--line);
 }
 
 .mass-balance-trace-head,
 .mass-balance-trace-row {
   display: grid;
-  grid-template-columns: 0.9fr 0.9fr 1.15fr 0.9fr repeat(6, minmax(82px, 0.7fr));
-  min-width: 980px;
+  grid-template-columns: 0.9fr 0.9fr 1.15fr 0.9fr repeat(7, minmax(82px, 0.7fr));
+  min-width: 1080px;
 }
 
 .mass-balance-trace-head {
   border-bottom: 1px solid var(--line);
+  background: #fafafa;
   color: var(--muted);
   font-size: 10px;
   font-weight: 700;
@@ -111,6 +183,10 @@
   border-bottom: 1px solid var(--line);
   color: var(--muted);
   font-size: 12px;
+}
+
+.mass-balance-trace-row:hover {
+  background: #fffafa;
 }
 
 .mass-balance-trace-row:last-child {

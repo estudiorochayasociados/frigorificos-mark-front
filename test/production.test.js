@@ -1,6 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import {
+  calcularRindeProduccion,
   consumedByTruck,
   groupTrucksByBrand,
   normalizeProductionBOutputs,
@@ -60,4 +61,20 @@ test('Cajas B are an independent caliber group', () => {
   assert.equal(output.boxesB, undefined)
   assert.deepEqual(outputsB, [{ id: 'b1', caliber: 'B-18', boxes: 3 }])
   assert.equal(totalOutputBoxesB(outputsB), 3)
+})
+
+test('rinde includes all produced boxes regardless of their type or caliber', () => {
+  const result = calcularRindeProduccion(
+    [{ brutoOrigen: 43180, taraOrigen: 0, brutoPlanta: 42180, taraPlanta: 0 }],
+    [{ caliber: '7', boxes: 2000 }],
+    [{ caliber: 'B-18', boxes: 10 }],
+    [{ caliber: '6', boxes: 152 }],
+  )
+
+  assert.equal(result.cajas, 2162)
+  assert.equal(result.faenaKg, 43240)
+  assert.equal(result.netoGranja, 43180)
+  assert.equal(result.netoPlanta, 42180)
+  assert.equal(result.rindeGranja, 43240 / 43180)
+  assert.equal(result.rindePlanta, 43240 / 42180)
 })

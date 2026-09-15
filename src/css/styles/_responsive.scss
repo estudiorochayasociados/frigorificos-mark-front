@@ -79,6 +79,14 @@
   .mass-balance-summary {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+
+  .mass-balance-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .mass-balance-metrics article:nth-child(odd) {
+    border-left: 0;
+  }
 }
 
 .raw-material-table-row--total {
@@ -315,6 +323,25 @@
   .mass-balance-results,
   .mass-balance-summary {
     grid-template-columns: 1fr;
+  }
+
+  .mass-balance-summary-card {
+    margin: 14px;
+  }
+
+  .mass-balance-metrics,
+  .mass-balance-reconciliation {
+    grid-template-columns: 1fr;
+  }
+
+  .mass-balance-metrics article + article,
+  .mass-balance-reconciliation article {
+    border-top: 1px solid var(--line);
+    border-left: 0;
+  }
+
+  .mass-balance-operator {
+    display: none;
   }
 
   .date-range-result-row {

@@ -52,6 +52,7 @@
           :total-boxes="totalBoxes"
           @confirm-output="confirmOutput"
           @update-output-b-boxes="updateOutputBBoxes"
+          @update-output-b-trozado-boxes="updateOutputBTrozadoBoxes"
           @update-output-boxes="updateOutputBoxes"
           @update-product="updateProduct"
         />
@@ -78,8 +79,11 @@
           :active-totals="activeTotals"
           :produced-outputs="producedOutputs"
           :produced-outputs-b="producedOutputsB"
+          :produced-outputs-b-trozado="producedOutputsBTrozado"
           :selected-consumption="selectedConsumption"
+          :yield-summary="yieldSummary"
           :number="number"
+          :percentage="percentage"
           :total-boxes="totalBoxes"
           @close-production="closeProduction"
           @update-finished="updateFinished"
@@ -115,6 +119,7 @@ import { dateFromQuery, todayIsoDate } from '@/utils/date'
 import { AlertCircle, ArrowLeft, CheckCircle2, Truck } from '@lucide/vue'
 import {
   DEFAULT_CALIBERS,
+  calcularRindeProduccion,
   consumedByTruck,
   proposeFifoConsumption,
   normalizeProductionBOutputs,
@@ -209,6 +214,17 @@ const producedOutputs = computed(() =>
 const producedOutputsB = computed(() =>
   (activeProduction.value?.outputsB || []).filter((output) => Number(output.boxes || 0) > 0),
 )
+const producedOutputsBTrozado = computed(() =>
+  (activeProduction.value?.outputsBTrozado || []).filter((output) => Number(output.boxes || 0) > 0),
+)
+const yieldSummary = computed(() =>
+  calcularRindeProduccion(
+    activeTrucks.value,
+    activeProduction.value?.outputs,
+    activeProduction.value?.outputsB,
+    activeProduction.value?.outputsBTrozado,
+  ),
+)
 
 watch(
   () => route.query.date,
@@ -226,6 +242,9 @@ function normalizeProduction(production) {
       normalizeProductionOutput(production.outputs, caliber),
     ),
     outputsB: normalizeProductionBOutputs(production.outputsB),
+    outputsBTrozado: DEFAULT_CALIBERS.map((caliber) =>
+      normalizeProductionOutput(production.outputsBTrozado, caliber),
+    ),
     consumption: production.consumption || {},
     truckOrder:
       production.truckOrder ||
@@ -280,6 +299,11 @@ function updateOutputBBoxes(caliber, value) {
   if (output) output.boxes = value
 }
 
+function updateOutputBTrozadoBoxes(caliber, value) {
+  const output = activeProduction.value.outputsBTrozado.find((item) => item.caliber === caliber)
+  if (output) output.boxes = value
+}
+
 function updateRequiredBirds(value) {
   activeProduction.value.requiredBirds = value
 }
@@ -303,6 +327,11 @@ async function confirmOutput() {
   )
   if (invalidOutputB)
     return showFeedback('Las cajas B deben ser números enteros positivos', 'error')
+  const invalidOutputBTrozado = production.outputsBTrozado.some(
+    (output) => !Number.isInteger(Number(output.boxes)) || Number(output.boxes) < 0,
+  )
+  if (invalidOutputBTrozado)
+    return showFeedback('Las cajas B de pollo trozado deben ser números enteros positivos', 'error')
   if (totalBoxes(production.outputs) <= 0)
     return showFeedback('Ingresa al menos una caja producida', 'error')
   try {
@@ -313,6 +342,10 @@ async function confirmOutput() {
         cajas: Number(output.boxes || 0),
       })),
       salidasB: production.outputsB.map((output) => ({
+        calibre: output.caliber,
+        cajas: Number(output.boxes || 0),
+      })),
+      salidasBTrozado: production.outputsBTrozado.map((output) => ({
         calibre: output.caliber,
         cajas: Number(output.boxes || 0),
       })),
@@ -516,6 +549,12 @@ function nonNegative(value) {
 function signedNumber(value) {
   const numeric = Number(value || 0)
   return `${numeric > 0 ? '+' : ''}${numeric.toLocaleString('es-AR')}`
+}
+
+function percentage(value) {
+  return value === null
+    ? '-'
+    : value.toLocaleString('es-AR', { style: 'percent', minimumFractionDigits: 2 })
 }
 
 function showFeedback(message, type = 'success') {

@@ -1,4 +1,5 @@
 export const DEFAULT_CALIBERS = ['5', '6', '7', '8', '9', '10', '11', '12', '13', '14']
+export const KILOS_POR_CAJA_RENDE = 20
 
 function dateMatchesFilter(date, filter) {
   if (!filter) return true
@@ -136,6 +137,31 @@ export function totalOutputBoxesB(outputs) {
     (total, output) => total + Math.max(0, Number(output.boxes || 0)),
     0,
   )
+}
+
+export function calcularRindeProduccion(trucks, outputs, outputsB, outputsBTrozado) {
+  const cajas =
+    totalOutputBoxes(outputs) + totalOutputBoxes(outputsB) + totalOutputBoxes(outputsBTrozado)
+  const faenaKg = cajas * KILOS_POR_CAJA_RENDE
+  const netoGranja = (trucks || []).reduce(
+    (total, truck) =>
+      total + Math.max(0, Number(truck?.brutoOrigen || 0) - Number(truck?.taraOrigen || 0)),
+    0,
+  )
+  const netoPlanta = (trucks || []).reduce(
+    (total, truck) =>
+      total + Math.max(0, Number(truck?.brutoPlanta || 0) - Number(truck?.taraPlanta || 0)),
+    0,
+  )
+
+  return {
+    cajas,
+    faenaKg,
+    netoGranja,
+    netoPlanta,
+    rindeGranja: netoGranja > 0 ? faenaKg / netoGranja : null,
+    rindePlanta: netoPlanta > 0 ? faenaKg / netoPlanta : null,
+  }
 }
 
 export function productionStatusLabel(production) {

@@ -106,97 +106,48 @@
           >
         </section>
 
-        <section v-if="selectedMassBalance" class="mass-balance-summary">
-          <article>
-            <span>Lotes de entrada</span><strong>{{ balanceLines.length }}</strong>
-          </article>
-          <article>
-            <span>Aves consumidas</span><strong>{{ number(balanceTotals.birdsToProcess) }}</strong>
-          </article>
-          <article>
-            <span>Kg de entrada</span><strong>{{ decimal(balanceTotals.inputKg) }} kg</strong>
-          </article>
-          <article>
-            <span>Salida por balance</span
-            ><strong>{{ decimal(balanceTotals.balanceOutputKg) }} kg</strong>
-          </article>
-          <article :class="{ 'mass-balance-difference': balanceTotals.differenceKg !== 0 }">
-            <span>Diferencia</span
-            ><strong>{{ signedDecimal(balanceTotals.differenceKg) }} kg</strong>
-          </article>
-        </section>
-
         <section v-if="selectedMassBalance" class="mass-balance-card data-card">
-          <div class="data-card-header">
-            <div>
-              <h2>Parámetros generales</h2>
-              <p>
-                El peso de entrada proviene de Planta; estos valores se aplican al total del día.
-              </p>
+          <section class="mass-balance-summary-card" aria-label="Resumen del balance de masa">
+            <div class="data-card-header">
+              <div>
+                <h2>Balance de masa</h2>
+                <p>Entrada + absorción − subproductos − decomiso, contrastado con la salida real.</p>
+              </div>
             </div>
-          </div>
-          <div class="mass-balance-inputs">
-            <NonNegativeInput
-              v-model="selectedMassBalance.general.yieldPercent"
-              outlined
-              dense
-              label="Rinde"
-              suffix="%"
-            />
-            <NonNegativeInput
-              v-model="selectedMassBalance.general.absorptionPercent"
-              outlined
-              dense
-              label="Absorción"
-              suffix="%"
-            />
-            <NonNegativeInput
-              v-model="selectedMassBalance.general.visceraPercent"
-              outlined
-              dense
-              label="Vísceras"
-              suffix="%"
-            />
-            <NonNegativeInput
-              v-model="selectedMassBalance.general.featherPercent"
-              outlined
-              dense
-              label="Plumas"
-              suffix="%"
-            />
-          </div>
-          <div v-if="balanceValidation.message" class="inline-warning mass-balance-warning">
-            <AlertCircle :size="18" /><span>{{ balanceValidation.message }}</span>
-          </div>
-          <div class="mass-balance-results mass-balance-results--compact">
-            <article>
-              <span>Entrada</span><strong>{{ decimal(balanceTotals.inputKg) }} kg</strong>
-            </article>
-            <article>
-              <span>Absorción</span><strong>{{ decimal(balanceTotals.absorptionKg) }} kg</strong>
-            </article>
-            <article>
-              <span>Subproductos</span><strong>{{ decimal(balanceTotals.byproductsKg) }} kg</strong>
-            </article>
-            <article>
-              <span>Decomiso</span><strong>{{ decimal(balanceTotals.confiscationKg) }} kg</strong>
-            </article>
-            <article>
-              <span>Salida rinde</span
-              ><strong>{{ decimal(balanceTotals.yieldOutputKg) }} kg</strong>
-            </article>
-            <article>
-              <span>Salida balance</span
-              ><strong>{{ decimal(balanceTotals.balanceOutputKg) }} kg</strong>
-            </article>
-            <article :class="{ 'mass-balance-difference': balanceTotals.differenceKg !== 0 }">
-              <span>Diferencia</span
-              ><strong>{{ signedDecimal(balanceTotals.differenceKg) }} kg</strong>
-            </article>
-          </div>
-        </section>
-
-        <section v-if="selectedMassBalance" class="mass-balance-card data-card">
+            <div class="mass-balance-metrics">
+              <article><span>Entrada</span><strong>{{ kgValue(balanceTotals.inputKg) }} kg</strong></article>
+              <article>
+                <span>Absorción máxima 8%</span><strong>{{ kgValue(balanceTotals.absorptionKg) }} kg</strong>
+              </article>
+              <article class="mass-balance-metric-input">
+                <NonNegativeInput
+                  v-model="selectedMassBalance.general.subproductsKg"
+                  outlined
+                  dense
+                  label="Subproductos"
+                  suffix="kg"
+                  @update:model-value="saveSubproducts"
+                  @blur="scheduleBalanceSave"
+                />
+              </article>
+              <article><span>Decomiso</span><strong>{{ kgValue(balanceTotals.confiscationKg) }} kg</strong></article>
+              <article>
+                <span>Salida</span><strong>{{ kgValue(balanceTotals.yieldOutputKg) }} kg</strong>
+              </article>
+            </div>
+            <div class="mass-balance-reconciliation">
+              <article>
+                <span>Resultado del balance</span><strong>{{ kgValue(balanceTotals.balanceOutputKg) }} kg</strong>
+              </article>
+              <span class="mass-balance-operator">=</span>
+              <article>
+                <span>Salida</span><strong>{{ kgValue(balanceTotals.yieldOutputKg) }} kg</strong>
+              </article>
+              <article :class="{ 'mass-balance-reconciliation--difference': balanceTotals.differenceKg !== 0 }">
+                <span>Diferencia</span><strong>{{ kgValue(balanceTotals.differenceKg) }} kg</strong>
+              </article>
+            </div>
+          </section>
           <div class="data-card-header">
             <div>
               <h2>Trazabilidad de ingresos</h2>
@@ -207,7 +158,8 @@
             <div class="mass-balance-trace-head">
               <span>Fecha de entrada</span><span>Lote</span><span>DTE</span><span>Camión</span
               ><span>Aves DTE</span><span>A faenar</span><span>Peso prom.</span
-              ><span>Kg entrada</span><span>Muertos</span><span>Decomisos + vísc.</span>
+              ><span>Kg entrada</span><span>Rinde</span><span>Peso salida</span
+              ><span>Decomisos + vísc.</span>
             </div>
             <div
               v-for="line in balanceLines"
@@ -222,7 +174,8 @@
               <strong>{{ number(line.birdsToProcess) }}</strong>
               <span>{{ decimal(line.averagePlantWeight) }} kg</span>
               <strong>{{ decimal(line.inputKg) }} kg</strong>
-              <span>{{ number(line.source.muertos) }}</span>
+              <span>{{ percentage(line.yieldRate) }}</span>
+              <strong>{{ line.outputKg === null ? '-' : `${decimal(line.outputKg)} kg` }}</strong>
               <span>{{ number(confiscationsFor(line.source)) }}</span>
             </div>
           </div>
@@ -437,6 +390,7 @@ import {
 import { truckClassificationKey } from '@/utils/balanza'
 import {
   DEFAULT_CALIBERS,
+  calcularRindeProduccion,
   consumedByTruck,
   groupTrucksByBrand,
   normalizeProductionBOutputs,
@@ -463,6 +417,7 @@ const historyStatus = ref('all')
 const feedback = reactive({ message: '', type: 'success' })
 const dateRangeValid = computed(() => isValidDateRange(dateRange.desde, dateRange.hasta))
 const singleDateSelected = computed(() => isSingleDateRange(dateRange))
+const ABSORPTION_RATE = 0.08
 let balancesReady = false
 let balanceSaveTimer = null
 
@@ -511,7 +466,11 @@ const balanceTraceCardFields = [
   { label: 'A faenar', value: (line) => number(line.birdsToProcess) },
   { label: 'Peso promedio', value: (line) => `${decimal(line.averagePlantWeight)} kg` },
   { label: 'Kg entrada', value: (line) => `${decimal(line.inputKg)} kg` },
-  { label: 'Muertos', value: (line) => number(line.source.muertos) },
+  { label: 'Rinde', value: (line) => percentage(line.yieldRate) },
+  {
+    label: 'Peso salida',
+    value: (line) => (line.outputKg === null ? '-' : `${decimal(line.outputKg)} kg`),
+  },
   { label: 'Decomisos + vísc.', value: (line) => number(confiscationsFor(line.source)) },
 ]
 
@@ -577,56 +536,63 @@ const balanceLines = computed(() =>
     const sourceBirds = truckBirds(source)
     const plantNetKg = Math.max(0, calculateNet(source?.brutoPlanta, source?.taraPlanta))
     const averagePlantWeight = sourceBirds > 0 ? plantNetKg / sourceBirds : 0
+    const yieldRate = productionYieldForTruck(line.truckId)
+    const inputKg = birdsToProcess * averagePlantWeight
     return {
       record: line,
       source,
       birdsToProcess,
       plantNetKg,
       averagePlantWeight,
-      inputKg: birdsToProcess * averagePlantWeight,
+      inputKg,
+      yieldRate,
       confiscationKg: confiscationsFor(source) * averagePlantWeight,
+      outputKg: yieldRate === null ? null : inputKg * yieldRate,
     }
   }),
 )
-const balanceTotals = computed(() => {
-  const birdsToProcess = balanceLines.value.reduce(
-    (total, line) => total + nonNegative(line.birdsToProcess),
-    0,
+const balanceProductions = computed(() => {
+  const truckIds = new Set(balanceLines.value.map((line) => line.record.truckId))
+  return productions.value.filter(
+    (production) =>
+      production.productionConfirmedAt && production.truckIds.some((truckId) => truckIds.has(truckId)),
   )
-  const inputKg = balanceLines.value.reduce((total, line) => total + nonNegative(line.inputKg), 0)
-  const confiscationKg = balanceLines.value.reduce(
-    (total, line) => total + nonNegative(line.confiscationKg),
-    0,
-  )
-  return {
-    birdsToProcess,
-    ...calculateBalanceLine({
-      ...selectedMassBalance.value?.general,
-      inputKg,
-      confiscationKg,
-    }),
-  }
 })
-const balanceValidation = computed(() => {
-  const missingPlantWeight = balanceLines.value.filter(
-    (line) => truckBirds(line.source) > 0 && line.plantNetKg <= 0,
+const balanceTotals = computed(() => {
+  const inputKg = balanceLines.value.reduce((total, line) => total + line.inputKg, 0)
+  const absorptionKg = inputKg * ABSORPTION_RATE
+  const byproductsKg = nonNegative(selectedMassBalance.value?.general?.subproductsKg)
+  const confiscationKg = balanceLines.value.reduce(
+    (total, line) => total + line.confiscationKg,
+    0,
   )
-  const missingParameters = [
-    'yieldPercent',
-    'absorptionPercent',
-    'visceraPercent',
-    'featherPercent',
-  ].some((field) => selectedMassBalance.value?.general?.[field] == null)
-  if (missingPlantWeight.length)
-    return {
-      message: 'Falta registrar el peso bruto y la tara de Planta en uno o más camiones.',
-    }
-  if (missingParameters)
-    return {
-      message:
-        'Completa los parámetros generales reales antes de tomar el balance como definitivo.',
-    }
-  return { message: '' }
+  const yieldOutputKg = balanceProductions.value.length
+    ? balanceProductions.value.reduce((total, production) => {
+        const productionTrucks = production.truckIds
+          .map((truckId) => truckDataFor(production, truckId))
+          .filter(Boolean)
+        return (
+          total +
+          calcularRindeProduccion(
+            productionTrucks,
+            production.outputs,
+            production.outputsB,
+            production.outputsBTrozado,
+          ).faenaKg
+        )
+      }, 0)
+    : null
+  const balanceOutputKg = inputKg + absorptionKg - byproductsKg - confiscationKg
+
+  return {
+    inputKg,
+    absorptionKg,
+    byproductsKg,
+    confiscationKg,
+    yieldOutputKg,
+    balanceOutputKg,
+    differenceKg: yieldOutputKg === null ? null : balanceOutputKg - yieldOutputKg,
+  }
 })
 watch(selectedMassBalance, () => scheduleBalanceSave(), { deep: true })
 watch(
@@ -697,6 +663,9 @@ function normalizeProduction(production) {
       normalizeProductionOutput(production.outputs, caliber),
     ),
     outputsB: normalizeProductionBOutputs(production.outputsB),
+    outputsBTrozado: DEFAULT_CALIBERS.map((caliber) =>
+      normalizeProductionOutput(production.outputsBTrozado, caliber),
+    ),
     consumption: production.consumption || {},
     truckOrder:
       production.truckOrder ||
@@ -758,28 +727,6 @@ async function deleteMassBalance() {
     showFeedback('Balance diario eliminado')
   } catch (error) {
     showFeedback(error.message, 'error')
-  }
-}
-
-function calculateBalanceLine(line) {
-  const inputKg = nonNegative(line.inputKg)
-  const absorptionKg = inputKg * (nonNegative(line.absorptionPercent) / 100)
-  const visceraKg = inputKg * (nonNegative(line.visceraPercent) / 100)
-  const featherKg = inputKg * (nonNegative(line.featherPercent) / 100)
-  const byproductsKg = visceraKg + featherKg
-  const confiscationKg = nonNegative(line.confiscationKg)
-  const yieldOutputKg = inputKg * (nonNegative(line.yieldPercent) / 100)
-  const balanceOutputKg = inputKg + absorptionKg - byproductsKg - confiscationKg
-  return {
-    inputKg,
-    absorptionKg,
-    visceraKg,
-    featherKg,
-    byproductsKg,
-    confiscationKg,
-    yieldOutputKg,
-    balanceOutputKg,
-    differenceKg: balanceOutputKg - yieldOutputKg,
   }
 }
 
@@ -846,6 +793,7 @@ async function openProduction(group) {
 
 function normalizeBalanceGeneral(values = {}) {
   return {
+    subproductsKg: optionalNumber(values.subproductsKg),
     yieldPercent: optionalNumber(values.yieldPercent),
     absorptionPercent: optionalNumber(values.absorptionPercent),
     visceraPercent: optionalNumber(values.visceraPercent),
@@ -886,6 +834,12 @@ function scheduleBalanceSave() {
       showFeedback(error.message, 'error')
     }
   }, 350)
+}
+
+function saveSubproducts(value) {
+  if (!selectedMassBalance.value) return
+  selectedMassBalance.value.general.subproductsKg = nonNegative(value)
+  scheduleBalanceSave()
 }
 
 function balanceLineFromTruck(truck, savedLine = null) {
@@ -940,6 +894,22 @@ function openHistoryDetail(production) {
 
 function truckDataFor(production, truckId) {
   return production?.truckSnapshots?.[truckId] || trucks.value.find((truck) => truck.id === truckId)
+}
+
+function productionYieldForTruck(truckId) {
+  const production = productions.value.find(
+    (item) => item.productionConfirmedAt && item.truckIds.includes(truckId),
+  )
+  if (!production) return null
+  const productionTrucks = production.truckIds
+    .map((id) => truckDataFor(production, id))
+    .filter(Boolean)
+  return calcularRindeProduccion(
+    productionTrucks,
+    production.outputs,
+    production.outputsB,
+    production.outputsBTrozado,
+  ).rindePlanta
 }
 
 function blackTruckCount(group) {
@@ -1006,12 +976,13 @@ function decimal(value) {
     maximumFractionDigits: 3,
   })
 }
-function signedDecimal(value) {
-  const numeric = Number(value || 0)
-  return `${numeric > 0 ? '+' : ''}${numeric.toLocaleString('es-AR', {
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 3,
-  })}`
+function kgValue(value) {
+  return value === null || value === undefined ? '-' : decimal(value)
+}
+function percentage(value) {
+  return value === null || value === undefined
+    ? '-'
+    : Number(value).toLocaleString('es-AR', { style: 'percent', minimumFractionDigits: 2 })
 }
 function nonNegative(value) {
   return Math.max(0, Number(value || 0))
