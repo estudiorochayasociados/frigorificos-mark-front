@@ -258,7 +258,6 @@ const navigation = {
 }
 const currentNavigation = computed(() =>
   navigation[currentRole.value]
-    .filter((item) => isFacundoRocha.value || item.to !== '/produccion/balance')
     .map((item) => ({
       ...item,
       active: () => sectionIsActive(currentRole.value, item.section),

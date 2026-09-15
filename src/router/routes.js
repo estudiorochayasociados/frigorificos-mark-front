@@ -34,7 +34,6 @@ const routes = [
       {
         path: 'produccion/balance',
         component: () => import('@/pages/Zona2/BalanceMasaPage.vue'),
-        meta: { requiresFacundo: true },
       },
       {
         path: 'produccion/proceso',
