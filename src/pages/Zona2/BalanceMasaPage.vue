@@ -124,16 +124,8 @@
                 <span>Absorción máxima 8%</span
                 ><strong>{{ kgValue(balanceTotals.absorptionKg) }} kg</strong>
               </article>
-              <article class="mass-balance-metric-input">
-                <NonNegativeInput
-                  v-model="selectedMassBalance.general.subproductsKg"
-                  outlined
-                  dense
-                  label="Subproductos"
-                  suffix="kg"
-                  @update:model-value="saveSubproducts"
-                  @blur="scheduleBalanceSave"
-                />
+              <article>
+                <span>Subproductos</span><strong>{{ kgValue(balanceTotals.byproductsKg) }} kg</strong>
               </article>
               <article>
                 <span>Decomiso</span><strong>{{ kgValue(balanceTotals.confiscationKg) }} kg</strong>
@@ -142,22 +134,74 @@
                 <span>Salida</span><strong>{{ kgValue(balanceTotals.yieldOutputKg) }} kg</strong>
               </article>
             </div>
-            <div class="mass-balance-reconciliation">
-              <article>
-                <span>Resultado del balance</span
-                ><strong>{{ kgValue(balanceTotals.balanceOutputKg) }} kg</strong>
-              </article>
-              <span class="mass-balance-operator">=</span>
-              <article>
-                <span>Salida</span><strong>{{ kgValue(balanceTotals.yieldOutputKg) }} kg</strong>
-              </article>
-              <article
-                :class="{
-                  'mass-balance-reconciliation--difference': balanceTotals.differenceKg !== 0,
-                }"
-              >
-                <span>Diferencia</span><strong>{{ kgValue(balanceTotals.differenceKg) }} kg</strong>
-              </article>
+            <div class="mass-balance-details">
+              <section class="mass-balance-details-head">
+                <article class="mass-balance-output">
+                  <span>Resultado del balance</span>
+                  <strong>{{ kgValue(balanceTotals.balanceOutputKg) }} kg</strong>
+                </article>
+                <article
+                  class="mass-balance-output"
+                  :class="{
+                    'mass-balance-reconciliation--difference': balanceTotals.differenceKg !== 0,
+                  }"
+                >
+                  <span>Diferencia</span><strong>{{ kgValue(balanceTotals.differenceKg) }} kg</strong>
+                </article>
+                <header class="mass-balance-subproduct-heading">
+                  <h4>Vísceras</h4>
+                  <NonNegativeInput
+                    v-model="selectedMassBalance.general.visceraPercent"
+                    class="mass-balance-percent-input"
+                    outlined
+                    dense
+                    hide-bottom-space
+                    suffix="%"
+                    aria-label="Porcentaje de vísceras"
+                    :maximum="100"
+                    @update:model-value="saveSubproductPercent('visceraPercent', $event)"
+                    @blur="scheduleBalanceSave"
+                  />
+                </header>
+                <header class="mass-balance-subproduct-heading">
+                  <h4>Plumas</h4>
+                  <NonNegativeInput
+                    v-model="selectedMassBalance.general.featherPercent"
+                    class="mass-balance-percent-input"
+                    outlined
+                    dense
+                    hide-bottom-space
+                    suffix="%"
+                    aria-label="Porcentaje de plumas"
+                    :maximum="100"
+                    @update:model-value="saveSubproductPercent('featherPercent', $event)"
+                    @blur="scheduleBalanceSave"
+                  />
+                </header>
+              </section>
+              <section class="mass-balance-subproducts">
+                <div class="mass-balance-subproducts-grid">
+                  <section class="mass-balance-subproduct-group">
+                    <div class="mass-balance-subproduct-item">
+                      <span>Harina de vísceras</span>
+                      <strong>{{ kgValue(balanceTotals.visceraKg) }} kg</strong>
+                      <small>Kg de entrada: {{ kgValue(balanceTotals.visceraInputKg) }} kg</small>
+                    </div>
+                    <div class="mass-balance-subproduct-item">
+                      <span>Aceite de vísceras</span>
+                      <strong>{{ kgValue(balanceTotals.oilKg) }} kg</strong>
+                      <small>Base: {{ kgValue(balanceTotals.visceraInputKg) }} kg</small>
+                    </div>
+                  </section>
+                  <section class="mass-balance-subproduct-group">
+                    <div class="mass-balance-subproduct-item">
+                      <span>Harina de plumas</span>
+                      <strong>{{ kgValue(balanceTotals.featherKg) }} kg</strong>
+                      <small>Kg de entrada: {{ kgValue(balanceTotals.featherInputKg) }} kg</small>
+                    </div>
+                  </section>
+                </div>
+              </section>
             </div>
           </section>
           <div class="data-card-header">
@@ -170,11 +214,11 @@
             <div class="mass-balance-trace-head">
               <span>Fecha de entrada</span><span>Lote</span><span>DTE</span><span>Camión</span
               ><span>Aves DTE</span><span>A faenar</span><span>Peso prom.</span
-              ><span>Kg entrada</span><span>Rinde</span><span>Peso salida</span
+              ><span>Kg entrada</span><span>Rinde</span><span>KG SALIDA</span
               ><span>Decomisos</span>
             </div>
             <div
-              v-for="line in balanceLines"
+              v-for="line in paginatedBalanceLines"
               :key="line.record.truckId"
               class="mass-balance-trace-row"
             >
@@ -193,7 +237,7 @@
           </div>
           <ResponsiveDataTable
             class="mass-balance-trace-cards lt-md"
-            :rows="balanceLines"
+            :rows="paginatedBalanceLines"
             :columns="balanceTraceColumns"
             :row-key="(line) => line.record.truckId"
             :mobile-fields="balanceTraceCardFields"
@@ -206,6 +250,19 @@
               >DTE {{ row.source.dte || '-' }} · {{ row.source.chasis || 'Sin patente' }}</template
             >
           </ResponsiveDataTable>
+          <footer v-if="tracePageCount > 1" class="mass-balance-trace-pagination">
+            <span>
+              Mostrando {{ tracePageStart }}-{{ tracePageEnd }} de {{ balanceLines.length }} ingresos
+            </span>
+            <q-pagination
+              v-model="tracePage"
+              :max="tracePageCount"
+              :max-pages="5"
+              direction-links
+              boundary-links
+              color="primary"
+            />
+          </footer>
         </section>
 
         <section
@@ -430,8 +487,15 @@ const feedback = reactive({ message: '', type: 'success' })
 const dateRangeValid = computed(() => isValidDateRange(dateRange.desde, dateRange.hasta))
 const singleDateSelected = computed(() => isSingleDateRange(dateRange))
 const ABSORPTION_RATE = 0.08
+const DEFAULT_VISCERA_PERCENT = 15
+const DEFAULT_FEATHER_PERCENT = 8
+const VISCERA_MEAL_RATE = 0.2
+const OIL_FROM_VISCERA_RATE = 0.1
+const FEATHER_MEAL_RATE = 0.3
+const TRACE_ROWS_PER_PAGE = 30
 let balancesReady = false
 let balanceSaveTimer = null
+const tracePage = ref(1)
 
 onMounted(async () => {
   await loadDateData()
@@ -480,7 +544,7 @@ const balanceTraceCardFields = [
   { label: 'Kg entrada', value: (line) => `${decimal(line.inputKg)} kg` },
   { label: 'Rinde', value: (line) => percentage(line.yieldRate) },
   {
-    label: 'Peso salida',
+    label: 'KG SALIDA',
     value: (line) => (line.outputKg === null ? '-' : `${decimal(line.outputKg)} kg`),
   },
   { label: 'Decomisos', value: (line) => number(confiscationsFor(line.source)) },
@@ -563,6 +627,20 @@ const balanceLines = computed(() =>
     }
   }),
 )
+const tracePageCount = computed(() =>
+  Math.max(1, Math.ceil(balanceLines.value.length / TRACE_ROWS_PER_PAGE)),
+)
+const paginatedBalanceLines = computed(() => {
+  const page = Math.min(tracePage.value, tracePageCount.value)
+  const start = (page - 1) * TRACE_ROWS_PER_PAGE
+  return balanceLines.value.slice(start, start + TRACE_ROWS_PER_PAGE)
+})
+const tracePageStart = computed(() =>
+  balanceLines.value.length ? (Math.min(tracePage.value, tracePageCount.value) - 1) * TRACE_ROWS_PER_PAGE + 1 : 0,
+)
+const tracePageEnd = computed(() =>
+  Math.min(tracePageStart.value + TRACE_ROWS_PER_PAGE - 1, balanceLines.value.length),
+)
 const balanceProductions = computed(() => {
   const truckIds = new Set(balanceLines.value.map((line) => line.record.truckId))
   return productions.value.filter(
@@ -574,7 +652,14 @@ const balanceProductions = computed(() => {
 const balanceTotals = computed(() => {
   const inputKg = balanceLines.value.reduce((total, line) => total + line.inputKg, 0)
   const absorptionKg = inputKg * ABSORPTION_RATE
-  const byproductsKg = nonNegative(selectedMassBalance.value?.general?.subproductsKg)
+  const visceraPercent = nonNegative(selectedMassBalance.value?.general?.visceraPercent)
+  const featherPercent = nonNegative(selectedMassBalance.value?.general?.featherPercent)
+  const visceraInputKg = inputKg * (visceraPercent / 100)
+  const featherInputKg = inputKg * (featherPercent / 100)
+  const visceraKg = visceraInputKg * VISCERA_MEAL_RATE
+  const oilKg = visceraInputKg * OIL_FROM_VISCERA_RATE
+  const featherKg = featherInputKg * FEATHER_MEAL_RATE
+  const byproductsKg = visceraInputKg + featherInputKg
   const confiscationKg = balanceLines.value.reduce((total, line) => total + line.confiscationKg, 0)
   const yieldOutputKg = balanceProductions.value.length
     ? balanceProductions.value.reduce((total, production) => {
@@ -597,6 +682,13 @@ const balanceTotals = computed(() => {
   return {
     inputKg,
     absorptionKg,
+    visceraPercent,
+    featherPercent,
+    visceraInputKg,
+    featherInputKg,
+    visceraKg,
+    featherKg,
+    oilKg,
     byproductsKg,
     confiscationKg,
     yieldOutputKg,
@@ -605,6 +697,9 @@ const balanceTotals = computed(() => {
   }
 })
 watch(selectedMassBalance, () => scheduleBalanceSave(), { deep: true })
+watch(tracePageCount, (pageCount) => {
+  if (tracePage.value > pageCount) tracePage.value = pageCount
+})
 watch(
   () => [
     dateRange.desde,
@@ -806,8 +901,8 @@ function normalizeBalanceGeneral(values = {}) {
     subproductsKg: optionalNumber(values.subproductsKg),
     yieldPercent: optionalNumber(values.yieldPercent),
     absorptionPercent: optionalNumber(values.absorptionPercent),
-    visceraPercent: optionalNumber(values.visceraPercent),
-    featherPercent: optionalNumber(values.featherPercent),
+    visceraPercent: percentageOrDefault(values.visceraPercent, DEFAULT_VISCERA_PERCENT),
+    featherPercent: percentageOrDefault(values.featherPercent, DEFAULT_FEATHER_PERCENT),
   }
 }
 
@@ -846,9 +941,9 @@ function scheduleBalanceSave() {
   }, 350)
 }
 
-function saveSubproducts(value) {
+function saveSubproductPercent(field, value) {
   if (!selectedMassBalance.value) return
-  selectedMassBalance.value.general.subproductsKg = nonNegative(value)
+  selectedMassBalance.value.general[field] = nonNegative(value)
   scheduleBalanceSave()
 }
 
@@ -1000,6 +1095,10 @@ function nonNegative(value) {
 function optionalNumber(value) {
   if (value === null || value === undefined || value === '') return null
   return nonNegative(value)
+}
+function percentageOrDefault(value, defaultValue) {
+  const normalized = optionalNumber(value)
+  return normalized === null ? defaultValue : normalized
 }
 function shortDate(value) {
   if (!value) return '-'

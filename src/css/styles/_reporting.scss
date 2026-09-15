@@ -20,52 +20,122 @@
   border-top: 1px solid var(--line);
 }
 
-.mass-balance-metrics article,
-.mass-balance-reconciliation article {
+.mass-balance-metrics article {
   display: grid;
   gap: 5px;
   padding: 14px 16px;
-}
-
-.mass-balance-metrics .mass-balance-metric-input {
-  display: block;
-  padding: 7px 12px;
 }
 
 .mass-balance-metrics article + article {
   border-left: 1px solid var(--line);
 }
 
-.mass-balance-metrics span,
-.mass-balance-reconciliation span {
+.mass-balance-metrics span {
   color: var(--muted);
   font-size: 10px;
   font-weight: 700;
   text-transform: uppercase;
 }
 
-.mass-balance-metrics strong,
-.mass-balance-reconciliation strong {
+.mass-balance-metrics strong {
   color: var(--ink);
   font-size: 16px;
 }
 
-.mass-balance-reconciliation {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 28px minmax(0, 1fr) minmax(0, 1fr);
-  align-items: stretch;
+.mass-balance-details {
   border-top: 1px solid var(--line);
+}
+
+.mass-balance-details > section + section {
+  border-top: 1px solid var(--line);
+}
+
+.mass-balance-subproducts small {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.mass-balance-subproduct-heading,
+.mass-balance-output {
+  display: grid;
+  gap: 5px;
+  padding: 10px 12px;
+}
+
+.mass-balance-subproduct-heading {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+}
+
+.mass-balance-subproducts-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.mass-balance-subproduct-group:first-child {
+  grid-column: 3;
+}
+
+.mass-balance-subproduct-group + .mass-balance-subproduct-group {
+  border-left: 1px solid var(--line);
+}
+
+.mass-balance-subproduct-heading h4 {
+  margin: 0;
+  color: var(--ink);
+  font-size: 12px;
+}
+
+.mass-balance-percent-input {
+  width: 78px;
+}
+
+.mass-balance-subproduct-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 3px 10px;
+  padding: 9px 12px;
+}
+
+.mass-balance-subproduct-item + .mass-balance-subproduct-item {
+  border-top: 1px solid var(--line);
+}
+
+.mass-balance-subproduct-item span {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.mass-balance-subproduct-item strong {
+  color: var(--ink);
+  font-size: 14px;
+  text-align: right;
+}
+
+.mass-balance-subproduct-item small {
+  grid-column: 1 / -1;
+}
+
+.mass-balance-output span {
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.mass-balance-output strong {
+  color: var(--ink);
+  font-size: 16px;
+}
+
+.mass-balance-details-head {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   background: #fafafa;
 }
 
-.mass-balance-operator {
-  display: grid;
-  place-items: center;
-  color: var(--ink) !important;
-  font-size: 18px !important;
-}
-
-.mass-balance-reconciliation article {
+.mass-balance-details-head > * + * {
   border-left: 1px solid var(--line);
 }
 
@@ -195,6 +265,20 @@
 
 .mass-balance-trace-row strong {
   color: var(--ink);
+}
+
+.mass-balance-trace-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 10px 14px;
+  border-top: 1px solid var(--line);
+}
+
+.mass-balance-trace-pagination > span {
+  color: var(--muted);
+  font-size: 12px;
 }
 
 .mass-balance-line-toggle {

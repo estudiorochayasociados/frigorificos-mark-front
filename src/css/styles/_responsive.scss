@@ -341,18 +341,36 @@
   }
 
   .mass-balance-metrics,
-  .mass-balance-reconciliation {
+  .mass-balance-details-head {
     grid-template-columns: 1fr;
   }
 
-  .mass-balance-metrics article + article,
-  .mass-balance-reconciliation article {
+  .mass-balance-details-head > * + * {
     border-top: 1px solid var(--line);
     border-left: 0;
   }
 
-  .mass-balance-operator {
-    display: none;
+  .mass-balance-subproducts-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .mass-balance-subproduct-group:first-child {
+    grid-column: auto;
+  }
+
+  .mass-balance-subproduct-group + .mass-balance-subproduct-group {
+    border-top: 1px solid var(--line);
+    border-left: 0;
+  }
+
+  .mass-balance-metrics article + article {
+    border-top: 1px solid var(--line);
+    border-left: 0;
+  }
+
+  .mass-balance-trace-pagination {
+    align-items: flex-start;
+    flex-direction: column;
   }
 
   .date-range-result-row {
