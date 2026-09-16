@@ -60,19 +60,6 @@
           @update-output-boxes="updateOutputBoxes"
         />
 
-        <ProductionConsumoStep
-          v-if="currentStep === 'consumo'"
-          :production="activeProduction"
-          :active-trucks="activeTrucks"
-          :selected-consumption="selectedConsumption"
-          :consumption-difference="consumptionDifference"
-          :number="number"
-          :available-for-truck="availableForTruck"
-          :truck-use-order="truckUseOrder"
-          @confirm-consumption="confirmConsumption"
-          @update-consumption="updateConsumption"
-        />
-
         <ProductionCierreStep
           v-if="currentStep === 'cierre'"
           :production="activeProduction"
@@ -111,7 +98,6 @@ import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import ProductionCargaStep from '@/components/zona2/ProductionCargaStep.vue'
 import ProductionCierreStep from '@/components/zona2/ProductionCierreStep.vue'
-import ProductionConsumoStep from '@/components/zona2/ProductionConsumoStep.vue'
 import ProductionIngresoStep from '@/components/zona2/ProductionIngresoStep.vue'
 import { useCamiones } from '@/composables/useCamiones'
 import { useProducciones } from '@/composables/useProducciones'
@@ -123,7 +109,6 @@ import {
   consumedByTruck,
   normalizeProductionBOutputs,
   normalizeProductionOutput,
-  totalOutputBirds,
   totalOutputBoxes,
   truckAvailableBirds,
   truckBirds,
@@ -139,7 +124,6 @@ const {
   obtenerProduccion,
   confirmarIngreso,
   confirmarProduccion,
-  confirmarConsumo,
   cerrarProduccion,
 } = useProducciones()
 const productions = ref([])
@@ -163,8 +147,7 @@ onMounted(async () => {
 const flowSteps = [
   { number: '1', value: 'ingreso', label: 'Ingreso' },
   { number: '2', value: 'carga', label: 'Producción' },
-  { number: '3', value: 'consumo', label: 'Consumo' },
-  { number: '4', value: 'cierre', label: 'Cierre' },
+  { number: '3', value: 'cierre', label: 'Cierre' },
 ]
 
 const activeProduction = computed(() =>
@@ -193,13 +176,12 @@ const activeTotals = computed(() => ({
   available: activeTrucks.value.reduce((total, truck) => total + availableForTruck(truck), 0),
 }))
 const selectedConsumption = computed(() =>
-  Object.values(activeProduction.value?.consumption || {}).reduce(
+  activeProduction.value?.productionConfirmedAt && !activeProduction.value?.consumptionConfirmedAt
+    ? activeTotals.value.available
+    : Object.values(activeProduction.value?.consumption || {}).reduce(
     (total, value) => total + Math.max(0, Number(value || 0)),
     0,
   ),
-)
-const consumptionDifference = computed(
-  () => selectedConsumption.value - Number(activeProduction.value?.requiredBirds || 0),
 )
 const producedOutputs = computed(() =>
   (activeProduction.value?.outputs || []).filter((output) => Number(output.boxes || 0) > 0),
@@ -259,7 +241,7 @@ function normalizeProduction(production) {
 
 function nextStepFor(production) {
   if (production.status === 'completed' || production.consumptionConfirmedAt) return 'cierre'
-  if (production.productionConfirmedAt) return 'consumo'
+  if (production.productionConfirmedAt) return 'cierre'
   if (production.entryConfirmedAt) return 'carga'
   return 'ingreso'
 }
@@ -319,10 +301,6 @@ function resetOutputBirds(type, caliber) {
   output.birdsManual = false
 }
 
-function updateConsumption(truckId, value) {
-  activeProduction.value.consumption[truckId] = value
-}
-
 function updateFinished(field, value) {
   activeProduction.value.finished[field] = value
 }
@@ -355,22 +333,15 @@ async function confirmOutput() {
     return showFeedback('Las aves ajustadas deben ser números enteros positivos', 'error')
   if (totalBoxes(production.outputs) <= 0)
     return showFeedback('Ingresa al menos una caja producida', 'error')
-  const requiredBirds =
-    totalOutputBirds(production.outputs) +
-    totalOutputBirds(production.outputsB) +
-    totalOutputBirds(production.outputsBTrozado)
-  if (requiredBirds > activeTotals.value.available)
-    return showFeedback('Las aves calculadas superan la disponibilidad de los camiones', 'error')
   try {
     const updated = await confirmarProduccion(production.id, {
       producto: production.product,
       salidas: production.outputs.map(outputPayload),
       salidasB: production.outputsB.map(outputPayload),
       salidasBTrozado: production.outputsBTrozado.map(outputPayload),
-      avesRequeridas: requiredBirds,
     })
     replaceProduction(updated)
-    goToStep('consumo')
+    goToStep('cierre')
   } catch (error) {
     showFeedback(error.message, 'error')
   }
@@ -384,48 +355,12 @@ function outputPayload(output) {
   }
 }
 
-async function confirmConsumption() {
-  const production = activeProduction.value
-  const required = Number(production.requiredBirds || 0)
-  if (!Number.isInteger(required) || required <= 0)
-    return showFeedback('Las aves necesarias deben ser un número entero positivo', 'error')
-  const invalid = activeTrucks.value.some(
-    (truck) =>
-      !Number.isInteger(Number(production.consumption[truck.id] || 0)) ||
-      Number(production.consumption[truck.id] || 0) < 0 ||
-      Number(production.consumption[truck.id] || 0) > availableForTruck(truck),
-  )
-  if (invalid)
-    return showFeedback('El consumo no puede superar la disponibilidad de cada camión', 'error')
-  if (selectedConsumption.value !== required)
-    return showFeedback('Las aves seleccionadas deben coincidir con las necesarias', 'error')
-  try {
-    const updated = await confirmarConsumo(production.id, {
-      avesRequeridas: required,
-      consumos: Object.entries(production.consumption).map(([camionId, aves]) => ({
-        camionId,
-        aves: Number(aves || 0),
-      })),
-    })
-    updated.finished = normalizeFinished(
-      { ...production.finished, ...updated.finished },
-      production.date,
-      production.brand,
-    )
-    replaceProduction(updated)
-    goToStep('cierre')
-  } catch (error) {
-    showFeedback(error.message, 'error')
-  }
-}
-
 async function closeProduction() {
   const production = activeProduction.value
   const finished = production.finished
   if (
     !production.entryConfirmedAt ||
     !production.productionConfirmedAt ||
-    !production.consumptionConfirmedAt ||
     totalBoxes(production.outputs) <= 0
   )
     return showFeedback('Completa todas las etapas antes de cerrar la producción', 'error')
@@ -476,15 +411,13 @@ function canOpenStep(step) {
   if (production.status === 'completed') return step === 'cierre'
   if (step === 'ingreso') return true
   if (step === 'carga') return Boolean(production.entryConfirmedAt)
-  if (step === 'consumo') return Boolean(production.productionConfirmedAt)
-  return Boolean(production.consumptionConfirmedAt)
+  return Boolean(production.productionConfirmedAt)
 }
 
 function isStepDone(step) {
   const production = activeProduction.value
   if (step === 'ingreso') return Boolean(production?.entryConfirmedAt)
   if (step === 'carga') return Boolean(production?.productionConfirmedAt)
-  if (step === 'consumo') return Boolean(production?.consumptionConfirmedAt)
   return production?.status === 'completed'
 }
 

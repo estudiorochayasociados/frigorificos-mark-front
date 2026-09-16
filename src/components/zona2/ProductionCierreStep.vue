@@ -1,7 +1,7 @@
 <template>
   <section class="production-closure-step">
     <header class="production-mobile-heading">
-      <span>04</span>
+      <span>03</span>
       <div>
         <h2>Cierre y stock</h2>
         <p>Verifica el resumen e identifica el lote terminado.</p>
@@ -22,7 +22,7 @@
           </div>
         </section>
         <section class="closure-summary-section">
-          <h3>Consumo</h3>
+          <h3>Consumo automático</h3>
           <div class="closure-summary-row">
             <span>Aves utilizadas</span><strong>{{ number(selectedConsumption) }}</strong>
           </div>

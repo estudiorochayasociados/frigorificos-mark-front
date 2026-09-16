@@ -267,6 +267,28 @@
   color: var(--ink);
 }
 
+.mass-balance-trace-yield {
+  display: flex;
+  align-items: center;
+  padding: 4px 8px !important;
+}
+
+.mass-balance-trace-yield .q-field {
+  width: 100%;
+}
+
+.mass-balance-trace-yield--mobile {
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.mass-balance-trace-yield--mobile .q-field {
+  width: 94px;
+}
+
 .mass-balance-trace-pagination {
   display: flex;
   align-items: center;

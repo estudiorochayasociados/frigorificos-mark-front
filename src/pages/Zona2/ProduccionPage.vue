@@ -765,7 +765,10 @@ async function openProduction(group) {
       return
     }
   } else if (production.status !== 'completed') {
-    const addedTrucks = group.trucks.filter((truck) => !production.truckIds.includes(truck.id))
+    const occupiedTruckIds = new Set(productions.value.flatMap((item) => item.truckIds))
+    const addedTrucks = group.trucks.filter(
+      (truck) => !production.truckIds.includes(truck.id) && !occupiedTruckIds.has(truck.id),
+    )
     if (addedTrucks.length) {
       try {
         production = normalizeProduction(
@@ -794,7 +797,7 @@ async function openProduction(group) {
 
 function nextStepFor(production) {
   if (production.status === 'completed' || production.consumptionConfirmedAt) return 'cierre'
-  if (production.productionConfirmedAt) return 'consumo'
+  if (production.productionConfirmedAt) return 'cierre'
   if (production.entryConfirmedAt) return 'carga'
   return 'ingreso'
 }
@@ -886,7 +889,6 @@ function processStatusLabel(group) {
   return {
     ingreso: 'Ingreso',
     carga: 'Producción',
-    consumo: 'Consumo',
     cierre: 'Cierre',
   }[step]
 }

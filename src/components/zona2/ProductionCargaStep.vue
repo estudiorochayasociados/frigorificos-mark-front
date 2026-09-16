@@ -200,6 +200,12 @@
             <div>
               <span>Kilos totales</span><strong>{{ number(totalKilos) }} kg</strong>
             </div>
+            <div>
+              <span>Muertos</span><strong>{{ number(yieldSummary.muertos) }} aves</strong>
+            </div>
+            <div>
+              <span>Decomisos</span><strong>{{ number(yieldSummary.decomisos) }} aves</strong>
+            </div>
           </div>
           <div class="output-yield-head">
             <span></span><span>Camión</span><span>Faena</span><span>Rinde</span>

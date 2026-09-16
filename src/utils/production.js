@@ -135,12 +135,21 @@ export function calcularRindeProduccion(trucks, outputs, outputsB, outputsBTroza
       total + Math.max(0, Number(truck?.brutoPlanta || 0) - Number(truck?.taraPlanta || 0)),
     0,
   )
+  const bajas = (trucks || []).reduce(
+    (totales, truck) => {
+      totales.muertos += Math.max(0, Number(truck?.muertos || 0))
+      totales.decomisos += truckConfiscations(truck)
+      return totales
+    },
+    { muertos: 0, decomisos: 0 },
+  )
 
   return {
     cajas,
     faenaKg,
     netoGranja,
     netoPlanta,
+    ...bajas,
     rindeGranja: netoGranja > 0 ? faenaKg / netoGranja : null,
     rindePlanta: netoPlanta > 0 ? faenaKg / netoPlanta : null,
   }

@@ -310,6 +310,16 @@
   background: #fffbfb;
 }
 
+.raw-material-table-row--total {
+  border-top: 1px solid var(--line);
+  background: #fafafa;
+  font-weight: 700;
+}
+
+.raw-material-table-row--total strong {
+  color: var(--ink);
+}
+
 .raw-material-table-row > .truck-cell {
   position: relative;
   display: grid;
@@ -538,7 +548,7 @@
 
 .output-summary-metrics {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   margin-bottom: 10px;
   border: 1px solid var(--line);
   border-radius: 8px;

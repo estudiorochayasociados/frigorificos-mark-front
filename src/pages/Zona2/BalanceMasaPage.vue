@@ -146,7 +146,8 @@
                     'mass-balance-reconciliation--difference': balanceTotals.differenceKg !== 0,
                   }"
                 >
-                  <span>Diferencia</span><strong>{{ kgValue(balanceTotals.differenceKg) }} kg</strong>
+                  <span>Diferencia</span
+                  ><strong>{{ signedKgValue(balanceTotals.differenceKg) }} kg</strong>
                 </article>
                 <header class="mass-balance-subproduct-heading">
                   <h4>Vísceras</h4>
@@ -230,7 +231,18 @@
               <strong>{{ number(line.birdsToProcess) }}</strong>
               <span>{{ decimal(line.averagePlantWeight) }} kg</span>
               <strong>{{ decimal(line.inputKg) }} kg</strong>
-              <span>{{ percentage(line.yieldRate) }}</span>
+              <div class="mass-balance-trace-yield">
+                <NonNegativeInput
+                  :model-value="yieldPercentFor(line)"
+                  outlined
+                  dense
+                  hide-bottom-space
+                  suffix="%"
+                  aria-label="Rinde"
+                  @update:model-value="updateBalanceYield(line, $event)"
+                  @blur="scheduleBalanceSave"
+                />
+              </div>
               <strong>{{ line.outputKg === null ? '-' : `${decimal(line.outputKg)} kg` }}</strong>
               <span>{{ number(confiscationsFor(line.source)) }}</span>
             </div>
@@ -249,6 +261,21 @@
             <template #mobile-subtitle="{ row }"
               >DTE {{ row.source.dte || '-' }} · {{ row.source.chasis || 'Sin patente' }}</template
             >
+            <template #mobile-actions="{ row }">
+              <label class="mass-balance-trace-yield mass-balance-trace-yield--mobile">
+                <span>Rinde</span>
+                <NonNegativeInput
+                  :model-value="yieldPercentFor(row)"
+                  outlined
+                  dense
+                  hide-bottom-space
+                  suffix="%"
+                  aria-label="Rinde"
+                  @update:model-value="updateBalanceYield(row, $event)"
+                  @blur="scheduleBalanceSave"
+                />
+              </label>
+            </template>
           </ResponsiveDataTable>
           <footer v-if="tracePageCount > 1" class="mass-balance-trace-pagination">
             <span>
@@ -542,7 +569,6 @@ const balanceTraceCardFields = [
   { label: 'A faenar', value: (line) => number(line.birdsToProcess) },
   { label: 'Peso promedio', value: (line) => `${decimal(line.averagePlantWeight)} kg` },
   { label: 'Kg entrada', value: (line) => `${decimal(line.inputKg)} kg` },
-  { label: 'Rinde', value: (line) => percentage(line.yieldRate) },
   {
     label: 'KG SALIDA',
     value: (line) => (line.outputKg === null ? '-' : `${decimal(line.outputKg)} kg`),
@@ -612,7 +638,11 @@ const balanceLines = computed(() =>
     const sourceBirds = truckBirds(source)
     const plantNetKg = Math.max(0, calculateNet(source?.brutoPlanta, source?.taraPlanta))
     const averagePlantWeight = sourceBirds > 0 ? plantNetKg / sourceBirds : 0
-    const yieldRate = productionYieldForTruck(line.truckId)
+    const productionYieldRate = productionYieldForTruck(line.truckId)
+    const yieldRate =
+      line.yieldPercent === null || line.yieldPercent === undefined
+        ? productionYieldRate
+        : nonNegative(line.yieldPercent) / 100
     const inputKg = birdsToProcess * averagePlantWeight
     return {
       record: line,
@@ -641,14 +671,6 @@ const tracePageStart = computed(() =>
 const tracePageEnd = computed(() =>
   Math.min(tracePageStart.value + TRACE_ROWS_PER_PAGE - 1, balanceLines.value.length),
 )
-const balanceProductions = computed(() => {
-  const truckIds = new Set(balanceLines.value.map((line) => line.record.truckId))
-  return productions.value.filter(
-    (production) =>
-      production.productionConfirmedAt &&
-      production.truckIds.some((truckId) => truckIds.has(truckId)),
-  )
-})
 const balanceTotals = computed(() => {
   const inputKg = balanceLines.value.reduce((total, line) => total + line.inputKg, 0)
   const absorptionKg = inputKg * ABSORPTION_RATE
@@ -661,21 +683,8 @@ const balanceTotals = computed(() => {
   const featherKg = featherInputKg * FEATHER_MEAL_RATE
   const byproductsKg = visceraInputKg + featherInputKg
   const confiscationKg = balanceLines.value.reduce((total, line) => total + line.confiscationKg, 0)
-  const yieldOutputKg = balanceProductions.value.length
-    ? balanceProductions.value.reduce((total, production) => {
-        const productionTrucks = production.truckIds
-          .map((truckId) => truckDataFor(production, truckId))
-          .filter(Boolean)
-        return (
-          total +
-          calcularRindeProduccion(
-            productionTrucks,
-            production.outputs,
-            production.outputsB,
-            production.outputsBTrozado,
-          ).faenaKg
-        )
-      }, 0)
+  const yieldOutputKg = balanceLines.value.length
+    ? balanceLines.value.reduce((total, line) => total + Number(line.outputKg || 0), 0)
     : null
   const balanceOutputKg = inputKg + absorptionKg - byproductsKg - confiscationKg
 
@@ -869,7 +878,10 @@ async function openProduction(group) {
       return
     }
   } else if (production.status !== 'completed') {
-    const addedTrucks = group.trucks.filter((truck) => !production.truckIds.includes(truck.id))
+    const occupiedTruckIds = new Set(productions.value.flatMap((item) => item.truckIds))
+    const addedTrucks = group.trucks.filter(
+      (truck) => !production.truckIds.includes(truck.id) && !occupiedTruckIds.has(truck.id),
+    )
     if (addedTrucks.length) {
       try {
         production = normalizeProduction(
@@ -947,6 +959,16 @@ function saveSubproductPercent(field, value) {
   scheduleBalanceSave()
 }
 
+function updateBalanceYield(line, value) {
+  if (!line?.record) return
+  line.record.yieldPercent = nonNegative(value)
+  scheduleBalanceSave()
+}
+
+function yieldPercentFor(line) {
+  return Math.round(nonNegative(line?.yieldRate) * 10000) / 100
+}
+
 function balanceLineFromTruck(truck, savedLine = null) {
   return {
     ...savedLine,
@@ -962,7 +984,7 @@ function balanceLineFromTruck(truck, savedLine = null) {
 
 function nextStepFor(production) {
   if (production.status === 'completed' || production.consumptionConfirmedAt) return 'cierre'
-  if (production.productionConfirmedAt) return 'consumo'
+  if (production.productionConfirmedAt) return 'cierre'
   if (production.entryConfirmedAt) return 'carga'
   return 'ingreso'
 }
@@ -1084,10 +1106,12 @@ function decimal(value) {
 function kgValue(value) {
   return value === null || value === undefined ? '-' : decimal(value)
 }
-function percentage(value) {
-  return value === null || value === undefined
-    ? '-'
-    : Number(value).toLocaleString('es-AR', { style: 'percent', minimumFractionDigits: 2 })
+function signedKgValue(value) {
+  if (value === null || value === undefined) return '-'
+  return Number(value || 0).toLocaleString('es-AR', {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 3,
+  })
 }
 function nonNegative(value) {
   return Math.max(0, Number(value || 0))

@@ -59,6 +59,19 @@
             </div>
           </div>
         </template>
+        <div class="raw-material-table-row raw-material-table-row--total">
+          <span></span>
+          <strong>Totales</strong>
+          <span></span><span></span><span></span>
+          <strong>{{ number(tableTotals.originBirds) }}</strong>
+          <strong>{{ number(tableTotals.plantBirds) }}</strong>
+          <strong>{{ kg(tableTotals.farmNetKg) }}</strong>
+          <strong>{{ kg(tableTotals.plantNetKg) }}</strong>
+          <strong>{{ kg(tableTotals.lossKg) }}</strong>
+          <strong>{{ number(tableTotals.deaths) }}</strong>
+          <strong>{{ number(tableTotals.confiscations) }}</strong>
+          <strong class="available">{{ number(tableTotals.available) }}</strong>
+        </div>
       </div>
       <dl class="production-entry-total">
         <div>
@@ -70,7 +83,7 @@
           <dd>{{ number(activeTotals.birds) }}</dd>
         </div>
         <div>
-          <dt>Bajas</dt>
+          <dt>Muertes + decomisos</dt>
           <dd>{{ number(activeTotals.deaths + activeTotals.confiscations) }}</dd>
         </div>
         <div class="available">
@@ -89,7 +102,7 @@
 
 <script setup>
 import { ArrowRight, ClipboardCheck, Pencil, Truck } from '@lucide/vue'
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import {
   truckClassificationClass,
   truckClassificationLabel,
@@ -99,7 +112,8 @@ import {
 import { calculateTruckMetrics, formatKg } from '@/utils/truckCalculations'
 
 const emit = defineEmits(['confirm', 'edit-truck'])
-defineProps({
+const expandedTruckId = ref('')
+const props = defineProps({
   activeTrucks: { type: Array, required: true },
   activeTotals: { type: Object, required: true },
   number: { type: Function, required: true },
@@ -109,7 +123,32 @@ defineProps({
   truckUseOrder: { type: Function, required: true },
 })
 
-const expandedTruckId = ref('')
+const tableTotals = computed(() =>
+  props.activeTrucks.reduce(
+    (totals, truck) => {
+      const metrics = metricsFor(truck)
+      totals.originBirds += Number(truck.avesGranja || 0)
+      totals.plantBirds += Number(props.birdsFor(truck) || 0)
+      totals.farmNetKg += metrics.netoGranja
+      totals.plantNetKg += metrics.netoPlanta
+      totals.lossKg += metrics.diferenciaNetaGranjaPlanta
+      totals.deaths += Number(truck.muertos || 0)
+      totals.confiscations += Number(props.confiscationsFor(truck) || 0)
+      totals.available += Number(props.availableForTruck(truck) || 0)
+      return totals
+    },
+    {
+      originBirds: 0,
+      plantBirds: 0,
+      farmNetKg: 0,
+      plantNetKg: 0,
+      lossKg: 0,
+      deaths: 0,
+      confiscations: 0,
+      available: 0,
+    },
+  ),
+)
 
 function editTruck(truck, step) {
   expandedTruckId.value = ''
