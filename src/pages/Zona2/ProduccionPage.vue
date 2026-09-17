@@ -36,7 +36,7 @@
               <div v-for="truck in historyTrucks" :key="truck.id">
                 <strong>{{ truck.chasis || '-' }}</strong
                 ><span>DTE {{ truck.dte || '-' }}</span
-                ><span>{{ number(historyDetail.consumption?.[truck.id]) }} aves consumidas</span>
+                ><span>{{ number(consumptionFor(historyDetail, truck.id)) }} aves consumidas</span>
               </div>
             </div>
           </section>
@@ -140,12 +140,11 @@
                     {{ line.source.chasis || 'Sin patente' }}</small
                   >
                 </div>
-                <span>{{ line.source.client || '-' }}</span>
+                <span>{{ line.source.marcaComercial?.nombre || '-' }}</span>
               </header>
               <div class="mass-balance-source">
                 <div>
-                  <span>Aves DTE</span
-                  ><strong>{{ number(line.source.avesOrigen || line.source.avesDte) }}</strong>
+                  <span>Aves ingresadas</span><strong>{{ number(line.source.avesOrigen) }}</strong>
                 </div>
                 <div>
                   <span>Muertos</span><strong>{{ number(line.source.muertos) }}</strong>
@@ -233,7 +232,7 @@
           <div v-if="dailyFinishedLots.length" class="mass-balance-finished">
             <div v-for="production in dailyFinishedLots" :key="production.id">
               <strong>{{ production.finished?.lot || 'Sin lote' }}</strong
-              ><span>{{ production.brand }} · {{ production.product }}</span
+              ><span>{{ brandNameFor(production) }} · {{ production.product }}</span
               ><span>{{ number(totalBoxes(production.outputs)) }} cajas</span>
             </div>
           </div>
@@ -300,7 +299,7 @@
             >
               <span class="history-date">{{ shortDate(production.date) }}</span>
               <span class="history-main">
-                <strong>{{ production.brand }}</strong>
+                <strong>{{ brandNameFor(production) }}</strong>
                 <small>{{ production.product }} · {{ totalBoxes(production.outputs) }} cajas</small>
               </span>
               <span>{{ production.finished?.lot || 'Sin lote' }}</span>
@@ -432,8 +431,8 @@ import {
   DEFAULT_CALIBERS,
   consumedByTruck,
   groupTrucksByBrand,
-  normalizeProductionBOutputs,
-  normalizeProductionOutput,
+  outputRow,
+  outputRows,
   productionDateForTruck,
   productionStatusLabel,
   totalOutputBoxes,
@@ -505,7 +504,7 @@ const filteredHistory = computed(() => {
       const truckTerms = production.truckIds
         .map((id) => truckDataFor(production, id)?.dte || '')
         .join(' ')
-      return `${production.brand} ${production.finished?.lot || ''} ${truckTerms}`
+      return `${brandNameFor(production)} ${production.finished?.lot || ''} ${truckTerms}`
         .toLocaleLowerCase('es')
         .includes(term)
     })
@@ -524,8 +523,8 @@ const historyTrucks = computed(
 )
 const historyTotals = computed(() => totalsFor(historyTrucks.value))
 const historyConsumption = computed(() =>
-  Object.values(historyDetail.value?.consumption || {}).reduce(
-    (total, value) => total + Number(value || 0),
+  (historyDetail.value?.consumption || []).reduce(
+    (total, item) => total + Number(item.birds || 0),
     0,
   ),
 )
@@ -534,7 +533,7 @@ const balanceSourceTrucks = computed(() =>
     .filter(
       (truck) =>
         dateInRange(productionDateForTruck(truck), dateRange) &&
-        Boolean(truck.lineConfirmedAt || truck.fin),
+        Boolean(truck.lineConfirmedAt),
     )
     .sort((left, right) => Number(left.productionOrder || 0) - Number(right.productionOrder || 0)),
 )
@@ -595,7 +594,7 @@ watch(
   },
 )
 watch(
-  () => [route.query.desde, route.query.hasta, route.query.fecha, route.query.date],
+  () => [route.query.desde, route.query.hasta, route.query.date],
   () => {
     const nextRange = dateRangeFromQuery(route.query, today)
     if (dateRange.desde !== nextRange.desde) dateRange.desde = nextRange.desde
@@ -612,8 +611,8 @@ async function loadDateData() {
       listarProducciones(dateRange),
       listarBalances(dateRange),
     ])
-    productions.value = producciones.map(normalizeProduction)
-    massBalances.value = balances.map(normalizeMassBalance)
+    productions.value = producciones.map(productionViewModel)
+    massBalances.value = balances.map(balanceViewModel)
     return camiones
   } catch (error) {
     showFeedback(error.message, 'error')
@@ -626,34 +625,17 @@ function setTodayRange() {
   dateRange.hasta = today
 }
 
-function normalizeProduction(production) {
+function productionViewModel(production) {
   return {
     ...production,
-    product: production.product || 'Pollo entero',
-    outputs: DEFAULT_CALIBERS.map((caliber) =>
-      normalizeProductionOutput(production.outputs, caliber),
-    ),
-    outputsB: normalizeProductionBOutputs(production.outputsB),
-    outputsBTrozado: DEFAULT_CALIBERS.map((caliber) =>
-      normalizeProductionOutput(production.outputsBTrozado, caliber),
-    ),
-    consumption: production.consumption || {},
-    truckOrder:
-      production.truckOrder ||
-      Object.fromEntries(
-        (production.truckIds || []).map((id, index) => [
-          id,
-          Number(production.truckSnapshots?.[id]?.productionOrder) || index + 1,
-        ]),
-      ),
-    events: production.events || [],
-    truckSnapshots: production.truckSnapshots || {},
-    finished:
-      production.finished || defaultFinished(production.date || today, production.brand || ''),
+    outputs: DEFAULT_CALIBERS.map((caliber) => outputRow(production.outputs, caliber)),
+    outputsB: outputRows(production.outputsB),
+    outputsBTrozado: DEFAULT_CALIBERS.map((caliber) => outputRow(production.outputsBTrozado, caliber)),
+    consumption: production.consumption,
   }
 }
 
-function normalizeMassBalance(balance) {
+function balanceViewModel(balance) {
   return {
     ...balance,
     lines: (balance.lines || []).map((line) => ({
@@ -678,6 +660,13 @@ async function createMassBalance() {
   try {
     const balance = await crearBalance({
       date: dateRange.desde,
+      general: {
+        yieldPercent: 0,
+        absorptionPercent: 8,
+        subproductsKg: 0,
+        visceraPercent: 15,
+        featherPercent: 8,
+      },
       lines: balanceSourceTrucks.value.map((truck) => ({
         truckId: truck.id,
         source: { ...truck },
@@ -688,7 +677,7 @@ async function createMassBalance() {
         featherPercent: 8,
       })),
     })
-    massBalances.value.push(normalizeMassBalance(balance))
+    massBalances.value.push(balanceViewModel(balance))
     showFeedback('Balance diario creado y guardado en la base de datos')
   } catch (error) {
     showFeedback(error.message, 'error')
@@ -733,7 +722,7 @@ function calculateBalanceLine(line) {
 
 function productionFor(group) {
   const matches = productions.value.filter(
-    (production) => production.date === group.date && production.brand === group.brand,
+    (production) => production.date === group.date && production.brandId === group.brandId,
   )
   const openProduction = matches.find((production) => production.status !== 'completed')
   if (openProduction) return openProduction
@@ -746,17 +735,17 @@ async function openProduction(group) {
   let production = productionFor(group)
   if (!production) {
     const previousProductions = productions.value.filter(
-      (item) => item.date === group.date && item.brand === group.brand,
+        (item) => item.date === group.date && item.brandId === group.brandId,
     )
     const assignedIds = new Set(previousProductions.flatMap((item) => item.truckIds))
     const productionTrucks = group.trucks.filter((truck) => !assignedIds.has(truck.id))
     try {
-      production = normalizeProduction(
+      production = productionViewModel(
         await crearProduccion({
-          fecha: group.date,
-          marca: group.brand,
-          producto: 'Pollo entero',
-          camionIds: productionTrucks.map((truck) => truck.id),
+          date: group.date,
+          brandId: group.brandId,
+          product: 'Pollo entero',
+          truckIds: productionTrucks.map((truck) => truck.id),
         }),
       )
       productions.value.push(production)
@@ -771,7 +760,7 @@ async function openProduction(group) {
     )
     if (addedTrucks.length) {
       try {
-        production = normalizeProduction(
+        production = productionViewModel(
           await agregarCamiones(production.id, [
             ...production.truckIds,
             ...addedTrucks.map((truck) => truck.id),
@@ -802,18 +791,6 @@ function nextStepFor(production) {
   return 'ingreso'
 }
 
-function defaultFinished(date, brand, sequence = 1) {
-  const expiration = new Date(`${date}T12:00:00`)
-  expiration.setDate(expiration.getDate() + 7)
-  const compactDate = date.split('-').reverse().join('').slice(0, 6)
-  return {
-    lot: `${compactDate}-${initials(brand).slice(0, 1) || 'P'}${String(sequence).padStart(2, '0')}`,
-    clientCode: '',
-    manufactureDate: date,
-    expirationDate: expiration.toISOString().slice(0, 10),
-  }
-}
-
 function goToDashboard() {
   router.push({
     path: '/produccion',
@@ -833,7 +810,10 @@ function openHistoryDetail(production) {
 }
 
 function truckDataFor(production, truckId) {
-  return production?.truckSnapshots?.[truckId] || trucks.value.find((truck) => truck.id === truckId)
+  return trucks.value.find((truck) => truck.id === truckId)
+}
+function consumptionFor(production, truckId) {
+  return production?.consumption?.find((item) => item.truckId === truckId)?.birds || 0
 }
 
 function blackTruckCount(group) {
@@ -878,9 +858,7 @@ function statusClass(production) {
     ? 'status-warning'
     : production.status === 'completed'
       ? 'status-success'
-      : production.status === 'draft'
-        ? 'status-neutral'
-        : 'status-active'
+      : 'status-active'
 }
 function processStatusLabel(group) {
   const production = productionFor(group)
@@ -902,14 +880,9 @@ function processStatusClass(group) {
       ? 'status-success'
       : 'status-active'
 }
-function initials(value) {
-  return String(value || '')
-    .split(/\s+/)
-    .filter(Boolean)
-    .map((part) => part[0])
-    .join('')
-    .slice(0, 2)
-    .toUpperCase()
+function brandNameFor(production) {
+  const truck = production.truckIds.map((id) => truckDataFor(production, id)).find(Boolean)
+  return truck?.marcaComercial?.nombre || '-'
 }
 function number(value) {
   return nonNegative(value).toLocaleString('es-AR')

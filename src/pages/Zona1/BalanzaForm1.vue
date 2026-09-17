@@ -20,7 +20,7 @@
               <span>1</span>
               <div>
                 <h3>Identificación y documentos</h3>
-                <p>Cliente, trazabilidad y comprobantes.</p>
+                <p>Marca comercial, trazabilidad y comprobantes.</p>
               </div>
             </div>
             <div class="form-grid form-grid--dialog">
@@ -28,7 +28,7 @@
                 v-model="form.marcaComercialId"
                 :options="brandOptions"
                 :loading="cargandoMarcas"
-                label="Cliente / marca comercial *"
+                label="Marca comercial *"
                 outlined
                 dense
                 class="field-control field-span-2"
@@ -332,7 +332,7 @@ const brandOptions = computed(() =>
 )
 const clientName = computed(() => {
   const marca = marcas.value.find((item) => item.id === form.marcaComercialId)
-  return marca?.nombre || form.client
+  return marca?.nombre || ''
 })
 const formValidationMessage = computed(() => {
   if (!form.marcaComercialId) return 'Seleccioná una marca comercial.'
@@ -356,8 +356,6 @@ async function saveTruck() {
   error.value = ''
   try {
     const payload = { ...form }
-    delete payload.client
-    delete payload.codigoSn
     delete payload.marcaComercial
     payload.avesOrigen = Number(form.avesOrigen || 0)
     if (form.id) await actualizarCamion(form.id, payload)

@@ -11,7 +11,7 @@
       </div>
 
       <q-form class="login-form" @submit.prevent="login">
-        <q-input v-model="usuario" outlined dense label="Usuario" autocomplete="username" />
+        <q-input v-model="correo" outlined dense type="email" label="Correo" autocomplete="email" />
         <q-input
           v-model="password"
           outlined
@@ -38,7 +38,7 @@ import { iniciarSesion } from '@/services/api'
 const authTokenKey = 'mark-auth-token'
 const accountKey = 'mark-auth-account'
 const router = useRouter()
-const usuario = ref('')
+const correo = ref('')
 const password = ref('')
 const loading = ref(false)
 const error = ref('')
@@ -47,7 +47,7 @@ async function login() {
   loading.value = true
   error.value = ''
   try {
-    const session = await iniciarSesion(usuario.value, password.value)
+    const session = await iniciarSesion(correo.value, password.value)
     localStorage.setItem(authTokenKey, session.token)
     localStorage.setItem(accountKey, JSON.stringify(session.cuenta))
     router.replace('/balanza')

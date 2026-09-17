@@ -15,9 +15,9 @@ export function dateFromQuery(value, fallback = todayIsoDate()) {
 }
 
 export function dateRangeFromQuery(query = {}, fallback = todayIsoDate()) {
-  const exact = query.fecha ?? query.date
-  const desde = dateFromQuery(query.desde ?? exact, fallback)
-  const hasta = dateFromQuery(query.hasta ?? exact, desde)
+  const exact = query.date
+  const desde = dateFromQuery(query.desde || exact, fallback)
+  const hasta = dateFromQuery(query.hasta || exact, desde)
   return isValidDateRange(desde, hasta) ? { desde, hasta } : { desde: fallback, hasta: fallback }
 }
 
@@ -37,7 +37,7 @@ export function dateInRange(value, range) {
 export function dateQuery(range) {
   const params = new URLSearchParams()
   if (typeof range === 'string') {
-    if (range) params.set('fecha', range)
+    if (range) params.set('date', range)
   } else {
     if (range?.desde) params.set('desde', range.desde)
     if (range?.hasta) params.set('hasta', range.hasta)

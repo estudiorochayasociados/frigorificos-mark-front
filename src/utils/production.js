@@ -7,7 +7,7 @@ function dateMatchesFilter(date, filter) {
   return date >= String(filter.desde || '') && date <= String(filter.hasta || '')
 }
 
-export function normalizeProductionOutput(outputs, caliber) {
+export function outputRow(outputs, caliber) {
   const existing = (outputs || []).find((item) => item.caliber === caliber)
   const boxes = Math.max(0, Number(existing?.boxes || 0))
   const rest = { ...(existing || {}) }
@@ -15,19 +15,19 @@ export function normalizeProductionOutput(outputs, caliber) {
   return { ...rest, caliber, boxes }
 }
 
-export function normalizeProductionBOutputs(outputs) {
-  const normalized = (outputs || []).map((output) => ({
+export function outputRows(outputs) {
+  const rows = (outputs || []).map((output) => ({
     ...(output || {}),
-    caliber: String(output?.caliber ?? output?.calibre ?? '').trim(),
-    boxes: Math.max(0, Number(output?.boxes ?? output?.cajas ?? 0)),
+    caliber: String(output?.caliber || '').trim(),
+    boxes: Math.max(0, Number(output?.boxes || 0)),
   }))
 
-  if (normalized.length) return normalized
+  if (rows.length) return rows
   return DEFAULT_CALIBERS.map((caliber) => ({ caliber, boxes: 0 }))
 }
 
 export function truckBirds(truck) {
-  return Math.max(0, Number(truck?.avesOrigen || truck?.avesDte || 0))
+  return Math.max(0, Number(truck?.avesOrigen || 0))
 }
 
 export function truckConfiscations(truck) {
@@ -43,9 +43,7 @@ export function truckAvailableBirds(truck) {
 }
 
 export function productionDateForTruck(truck) {
-  if (truck?.fechaEntrada) return truck.fechaEntrada
-  const value = truck?.date || truck?.createdAt
-  return value ? new Date(value).toISOString().slice(0, 10) : ''
+  return truck?.fechaEntrada || ''
 }
 
 export function groupTrucksByBrand(trucks, date) {
@@ -55,19 +53,21 @@ export function groupTrucksByBrand(trucks, date) {
   trucks
     .filter(
       (truck) =>
-        truck?.client &&
+        truck?.marcaComercial?.id &&
         dateMatchesFilter(productionDateForTruck(truck), date) &&
-        (!date || Boolean(truck.lineConfirmedAt || truck.fin)),
+        (!date || Boolean(truck.lineConfirmedAt)),
     )
     .forEach((truck) => {
       const truckDate = productionDateForTruck(truck)
-      const key = splitByDate ? `${truck.client}::${truckDate}` : truck.client
+      const brandId = truck.marcaComercial.id
+      const key = splitByDate ? `${brandId}::${truckDate}` : brandId
       const current = groups.get(key) || []
       current.push(truck)
       groups.set(key, current)
     })
-  return [...groups.entries()].map(([brand, brandTrucks]) => ({
-    brand: splitByDate ? brand.split('::')[0] : brand,
+  return [...groups.entries()].map(([key, brandTrucks]) => ({
+    brandId: splitByDate ? key.split('::')[0] : key,
+    brand: brandTrucks[0].marcaComercial.nombre,
     trucks: brandTrucks.sort(compareProductionOrder),
     date: productionDateForTruck(brandTrucks[0]),
   }))
@@ -87,8 +87,8 @@ function compareProductionOrder(left, right) {
 export function consumedByTruck(productions, excludedProductionId = null) {
   return productions.reduce((result, production) => {
     if (production.id === excludedProductionId || !production.consumptionConfirmedAt) return result
-    Object.entries(production.consumption || {}).forEach(([truckId, quantity]) => {
-      result[truckId] = Number(result[truckId] || 0) + Number(quantity || 0)
+    ;(production.consumption || []).forEach(({ truckId, birds }) => {
+      result[truckId] = Number(result[truckId] || 0) + Number(birds || 0)
     })
     return result
   }, {})
@@ -158,7 +158,6 @@ export function calcularRindeProduccion(trucks, outputs, outputsB, outputsBTroza
 export function productionStatusLabel(production) {
   if (!production) return 'Pendiente'
   if (production.status === 'completed') return 'Finalizada'
-  if (production.status === 'draft') return 'Borrador'
   return 'En proceso'
 }
 

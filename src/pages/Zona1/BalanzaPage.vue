@@ -51,11 +51,11 @@
                 <strong>{{ productionOrderForTruck(props.row) }}</strong>
               </span>
             </q-td>
-            <q-td key="client" :props="props">
+            <q-td key="marcaComercial" :props="props">
               <div class="client-cell">
                 <span class="truck-avatar"><Truck :size="19" /></span>
                 <div>
-                  <strong>{{ props.row.client }}</strong
+                  <strong>{{ props.row.marcaComercial?.nombre || '-' }}</strong
                   ><small>{{ props.row.dte || 'Sin DTE' }}</small>
                 </div>
               </div>
@@ -98,7 +98,7 @@
         <template #mobile-leading
           ><span class="truck-avatar"><Truck :size="20" /></span
         ></template>
-        <template #mobile-title="{ row }">{{ row.client }}</template>
+        <template #mobile-title="{ row }">{{ row.marcaComercial?.nombre || '-' }}</template>
         <template #mobile-subtitle="{ row }">{{ row.chasis }} / {{ row.acoplado || '-' }}</template>
         <template #mobile-status="{ row }">
           <span :class="['status-pill', truckStatusClass(row)]">{{ truckStatusLabel(row) }}</span>
@@ -190,7 +190,7 @@ const canReorder = computed(() => dateRangeValid.value && dateRange.desde === da
 
 const columns = [
   { name: 'productionOrder', label: 'Orden', field: 'productionOrder', align: 'left' },
-  { name: 'client', label: 'Cliente', field: 'client', align: 'left' },
+  { name: 'marcaComercial', label: 'Marca comercial', field: 'marcaComercial', align: 'left' },
   { name: 'patentes', label: 'Patentes', field: 'chasis', align: 'left' },
   { name: 'classification', label: 'Vía', field: 'classification', align: 'left' },
   { name: 'date', label: 'Fecha de entrada', field: (row) => truckDate(row), align: 'left' },
@@ -234,7 +234,7 @@ watch(
 )
 
 watch(
-  () => [route.query.desde, route.query.hasta, route.query.fecha],
+  () => [route.query.desde, route.query.hasta, route.query.date],
   () => {
     const nextRange = dateRangeFromQuery(route.query, today)
     if (dateRange.desde !== nextRange.desde) dateRange.desde = nextRange.desde
@@ -275,7 +275,7 @@ function goToTruckFaena(truck) {
 function deleteTruck(truck) {
   Dialog.create({
     title: 'Eliminar camión',
-    message: `¿Eliminar el camión de ${truck.client}?`,
+    message: `¿Eliminar el camión de ${truck.marcaComercial?.nombre || 'esta marca'}?`,
     cancel: { label: 'Cancelar', flat: true },
     ok: { label: 'Eliminar', color: 'negative' },
     persistent: true,

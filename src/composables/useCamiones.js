@@ -51,7 +51,7 @@ export function useCamiones() {
   async function ordenarCamiones(ids, fecha) {
     const resultado = await apiRequest('/camiones/orden', {
       method: 'PATCH',
-      body: JSON.stringify({ camionIds: ids, ...(fecha ? { fecha } : {}) }),
+      body: JSON.stringify({ truckIds: ids, ...(fecha ? { date: fecha } : {}) }),
     })
     camiones.value = resultado
     return resultado

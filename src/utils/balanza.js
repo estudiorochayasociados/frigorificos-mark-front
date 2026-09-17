@@ -1,9 +1,6 @@
-export const balanzaStorageKey = 'mark-frigorifico-operacion-v2'
-
 export function emptyTruckForm() {
   return {
     id: null,
-    client: '',
     marcaComercialId: '',
     dte: '',
     remito: '',
@@ -19,7 +16,6 @@ export function emptyTruckForm() {
     taraPlanta: 0,
     avesOrigen: 0,
     avesGranja: 0,
-    avesDte: 0,
     vacias: 0,
     inicio: '',
     fin: '',
@@ -27,44 +23,10 @@ export function emptyTruckForm() {
     decomisos: 0,
     decomisosVisc: 0,
     plumas: 0,
-    codigoSn: '',
     loteSenasa: '',
-    date: new Date().toISOString(),
-    sapCreated: false,
     productionOrder: 0,
     status: 'registrado',
-    classification: 'negro',
   }
-}
-
-export function loadBalanzaTrucks() {
-  const stored = localStorage.getItem(balanzaStorageKey)
-  if (!stored) return []
-
-  try {
-    const parsed = JSON.parse(stored)
-    if (!Array.isArray(parsed)) return []
-
-    let migrated = false
-    const trucks = parsed.map((truck) => {
-      const cleanedTruck = { ...truck }
-      delete cleanedTruck.operator
-      if (cleanedTruck.id == null || cleanedTruck.id === '') {
-        cleanedTruck.id = createId()
-        migrated = true
-      }
-      return cleanedTruck
-    })
-
-    if (migrated) localStorage.setItem(balanzaStorageKey, JSON.stringify(trucks))
-    return trucks
-  } catch {
-    return []
-  }
-}
-
-export function saveBalanzaTrucks(trucks) {
-  localStorage.setItem(balanzaStorageKey, JSON.stringify(trucks))
 }
 
 export function productionOrderFor(trucks, truck) {
@@ -83,14 +45,8 @@ export function compareProductionOrder(trucks) {
   }
 }
 
-export function nextProductionOrder(trucks) {
-  return (
-    trucks.reduce((largest, truck) => Math.max(largest, productionOrderFor(trucks, truck)), 0) + 1
-  )
-}
-
 export function truckStatusKey(truck) {
-  return truck?.status === 'faeneado' || truck?.lineConfirmedAt || truck?.fin
+  return truck?.status === 'faeneado' || truck?.lineConfirmedAt
     ? 'faeneado'
     : 'registrado'
 }
@@ -116,13 +72,5 @@ export function truckClassificationClass(truck) {
 }
 
 export function truckDate(truck) {
-  const value = truck?.fechaEntrada
-    ? `${truck.fechaEntrada}T00:00:00`
-    : truck?.date || truck?.createdAt || new Date().toISOString()
-  return new Date(value).toLocaleDateString('es-AR')
-}
-
-export function createId() {
-  if (globalThis.crypto?.randomUUID) return globalThis.crypto.randomUUID()
-  return `id-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`
+  return new Date(`${truck.fechaEntrada}T00:00:00`).toLocaleDateString('es-AR')
 }

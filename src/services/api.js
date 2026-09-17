@@ -1,7 +1,6 @@
 const authTokenKey = 'mark-auth-token'
+const accountKey = 'mark-auth-account'
 const apiBaseUrl = (import.meta.env.VITE_API_URL || 'http://26.103.1.82:3000/api').replace(/\/$/, '')
-// const apiBaseUrl = (import.meta.env.VITE_API_URL || 'http://26.253.151.141:3000/api').replace(/\/$/, '')
-// const apiBaseUrl = (import.meta.env.VITE_API_URL || 'https://mark.cloud.estudiorocha.ar/api').replace(/\/$/, '')
 
 export async function apiRequest(path, options = {}) {
   const headers = new Headers(options.headers || {})
@@ -19,15 +18,24 @@ export async function apiRequest(path, options = {}) {
   if (!response.ok) {
     const error = new Error(data?.mensaje || 'No se pudo completar la operación.')
     error.status = response.status
+    error.code = data?.codigo
+
+    // A protected request rejected by the API means the stored session can no longer be used.
+    if (response.status === 401 && path !== '/autenticacion/login') {
+      localStorage.removeItem(authTokenKey)
+      localStorage.removeItem(accountKey)
+      window.dispatchEvent(new Event('mark:session-invalid'))
+    }
+
     throw error
   }
 
   return data
 }
 
-export function iniciarSesion(usuario, contrasena) {
+export function iniciarSesion(correo, contrasena) {
   return apiRequest('/autenticacion/login', {
     method: 'POST',
-    body: JSON.stringify({ usuario, contrasena }),
+    body: JSON.stringify({ correo, contrasena }),
   })
 }

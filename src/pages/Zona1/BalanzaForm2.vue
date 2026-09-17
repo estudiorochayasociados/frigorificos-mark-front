@@ -3,7 +3,7 @@
     <div class="page-content">
       <PageHeader
         class="balanza-form-header"
-        :title="`Faena de ${form.client}`"
+        :title="`Faena de ${form.marcaComercial?.nombre || ''}`"
         description="Carga rápida de horarios, novedades y resultados de línea."
       >
         <template #actions

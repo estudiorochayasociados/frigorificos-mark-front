@@ -19,6 +19,26 @@ function currentAccount() {
   }
 }
 
+function tokenIsValid() {
+  const token = localStorage.getItem(authTokenKey)
+  if (!token) return false
+
+  try {
+    const payload = token.split('.')[1]
+    const normalizedPayload = payload.replace(/-/g, '+').replace(/_/g, '/')
+    const decodedPayload = atob(normalizedPayload.padEnd(Math.ceil(normalizedPayload.length / 4) * 4, '='))
+    const { exp } = JSON.parse(decodedPayload)
+    return Number.isFinite(exp) && exp * 1000 > Date.now()
+  } catch {
+    return false
+  }
+}
+
+function clearSession() {
+  localStorage.removeItem(authTokenKey)
+  localStorage.removeItem(accountKey)
+}
+
 function isFacundoRocha(account) {
   return account?.nombre?.trim().toLocaleLowerCase('es-AR') === 'facundo rocha'
 }
@@ -50,13 +70,20 @@ export default defineRouter((/* { store, ssrContext } */) => {
   })
 
   Router.beforeEach((to) => {
-    const hasToken = Boolean(localStorage.getItem(authTokenKey))
+    const hasToken = tokenIsValid()
     const account = currentAccount()
 
-    if (to.meta.requiresAuth && !hasToken) return '/'
+    if (to.meta.requiresAuth && !hasToken) {
+      clearSession()
+      return '/'
+    }
     if (to.meta.requiresAdmin && account?.rol !== 'admin') return '/balanza'
     if (to.meta.requiresFacundo && !isFacundoRocha(account)) return '/balanza'
     if (to.meta.guestOnly && hasToken) return '/balanza'
+  })
+
+  window.addEventListener('mark:session-invalid', () => {
+    Router.replace('/')
   })
 
   return Router

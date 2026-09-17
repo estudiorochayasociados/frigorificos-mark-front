@@ -9,7 +9,7 @@
           <div class="production-flow-title">
             <span class="truck-avatar"><Truck :size="19" /></span>
             <div>
-              <h1>{{ activeProduction.brand }}</h1>
+              <h1>{{ activeBrandName }}</h1>
               <small
                 >Paso {{ currentStepMeta.number }} de {{ flowSteps.length }} ·
                 {{ currentStepMeta.label }}</small
@@ -60,6 +60,19 @@
           @update-output-boxes="updateOutputBoxes"
         />
 
+        <ProductionConsumoStep
+          v-if="currentStep === 'consumo'"
+          :production="activeProduction"
+          :active-trucks="activeTrucks"
+          :selected-consumption="selectedConsumption"
+          :consumption-difference="consumptionDifference"
+          :number="number"
+          :available-for-truck="availableForTruck"
+          :truck-use-order="truckUseOrder"
+          @confirm-consumption="confirmConsumption"
+          @update-consumption="updateConsumption"
+        />
+
         <ProductionCierreStep
           v-if="currentStep === 'cierre'"
           :production="activeProduction"
@@ -98,6 +111,7 @@ import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import ProductionCargaStep from '@/components/zona2/ProductionCargaStep.vue'
 import ProductionCierreStep from '@/components/zona2/ProductionCierreStep.vue'
+import ProductionConsumoStep from '@/components/zona2/ProductionConsumoStep.vue'
 import ProductionIngresoStep from '@/components/zona2/ProductionIngresoStep.vue'
 import { useCamiones } from '@/composables/useCamiones'
 import { useProducciones } from '@/composables/useProducciones'
@@ -107,8 +121,8 @@ import {
   DEFAULT_CALIBERS,
   calcularRindeProduccion,
   consumedByTruck,
-  normalizeProductionBOutputs,
-  normalizeProductionOutput,
+  outputRow,
+  outputRows,
   totalOutputBoxes,
   truckAvailableBirds,
   truckBirds,
@@ -118,12 +132,13 @@ import {
 const route = useRoute()
 const router = useRouter()
 const today = todayIsoDate()
-const { camiones: trucks, listarCamiones } = useCamiones()
+const { camiones: trucks, obtenerCamion } = useCamiones()
 const {
   listarProducciones,
   obtenerProduccion,
   confirmarIngreso,
   confirmarProduccion,
+  confirmarConsumo,
   cerrarProduccion,
 } = useProducciones()
 const productions = ref([])
@@ -132,13 +147,13 @@ const feedback = reactive({ message: '', type: 'success' })
 
 onMounted(async () => {
   try {
-    await listarCamiones(selectedDate.value)
     const disponibles = await listarProducciones(selectedDate.value)
-    productions.value = disponibles.map(normalizeProduction)
+    productions.value = disponibles.map(productionViewModel)
     if (!activeProduction.value && route.query.id) {
       const production = await obtenerProduccion(route.query.id)
-      productions.value = [normalizeProduction(production)]
+      productions.value = [productionViewModel(production)]
     }
+    trucks.value = await Promise.all((activeProduction.value?.truckIds || []).map(obtenerCamion))
   } catch (error) {
     showFeedback(error.message, 'error')
   }
@@ -147,11 +162,15 @@ onMounted(async () => {
 const flowSteps = [
   { number: '1', value: 'ingreso', label: 'Ingreso' },
   { number: '2', value: 'carga', label: 'Producción' },
-  { number: '3', value: 'cierre', label: 'Cierre' },
+  { number: '3', value: 'consumo', label: 'Consumo' },
+  { number: '4', value: 'cierre', label: 'Cierre' },
 ]
 
 const activeProduction = computed(() =>
   productions.value.find((production) => production.id === route.query.id),
+)
+const activeBrandName = computed(
+  () => activeTrucks.value[0]?.marcaComercial?.nombre || activeProduction.value?.brandId || '-',
 )
 const currentStep = computed(() => {
   const requested = route.query.step
@@ -176,12 +195,13 @@ const activeTotals = computed(() => ({
   available: activeTrucks.value.reduce((total, truck) => total + availableForTruck(truck), 0),
 }))
 const selectedConsumption = computed(() =>
-  activeProduction.value?.productionConfirmedAt && !activeProduction.value?.consumptionConfirmedAt
-    ? activeTotals.value.available
-    : Object.values(activeProduction.value?.consumption || {}).reduce(
-    (total, value) => total + Math.max(0, Number(value || 0)),
+  (activeProduction.value?.consumption || []).reduce(
+    (total, item) => total + Math.max(0, Number(item.birds || 0)),
     0,
   ),
+)
+const consumptionDifference = computed(
+  () => selectedConsumption.value - Number(activeProduction.value?.requiredBirds || 0),
 )
 const producedOutputs = computed(() =>
   (activeProduction.value?.outputs || []).filter((output) => Number(output.boxes || 0) > 0),
@@ -209,39 +229,19 @@ watch(
   },
 )
 
-function normalizeProduction(production) {
+function productionViewModel(production) {
   return {
     ...production,
-    product: production.product || 'Pollo entero',
-    outputs: DEFAULT_CALIBERS.map((caliber) =>
-      normalizeProductionOutput(production.outputs, caliber),
-    ),
-    outputsB: normalizeProductionBOutputs(production.outputsB),
-    outputsBTrozado: DEFAULT_CALIBERS.map((caliber) =>
-      normalizeProductionOutput(production.outputsBTrozado, caliber),
-    ),
-    consumption: production.consumption || {},
-    truckOrder:
-      production.truckOrder ||
-      Object.fromEntries(
-        (production.truckIds || []).map((id, index) => [
-          id,
-          Number(production.truckSnapshots?.[id]?.productionOrder) || index + 1,
-        ]),
-      ),
-    events: production.events || [],
-    truckSnapshots: production.truckSnapshots || {},
-    finished: normalizeFinished(
-      production.finished,
-      production.date || today,
-      production.brand || '',
-    ),
+    outputs: DEFAULT_CALIBERS.map((caliber) => outputRow(production.outputs, caliber)),
+    outputsB: outputRows(production.outputsB),
+    outputsBTrozado: DEFAULT_CALIBERS.map((caliber) => outputRow(production.outputsBTrozado, caliber)),
+    consumption: production.consumption,
   }
 }
 
 function nextStepFor(production) {
   if (production.status === 'completed' || production.consumptionConfirmedAt) return 'cierre'
-  if (production.productionConfirmedAt) return 'cierre'
+  if (production.productionConfirmedAt) return 'consumo'
   if (production.entryConfirmedAt) return 'carga'
   return 'ingreso'
 }
@@ -265,7 +265,7 @@ function updateOutputBoxes(caliber, value) {
 }
 
 function updateOutputBBoxes(caliber, value) {
-  activeProduction.value.outputsB = normalizeProductionBOutputs(activeProduction.value.outputsB)
+  activeProduction.value.outputsB = outputRows(activeProduction.value.outputsB)
   const output = activeProduction.value.outputsB.find((item) => item.caliber === caliber)
   if (output) output.boxes = value
 }
@@ -335,10 +335,10 @@ async function confirmOutput() {
     return showFeedback('Ingresa al menos una caja producida', 'error')
   try {
     const updated = await confirmarProduccion(production.id, {
-      producto: production.product,
-      salidas: production.outputs.map(outputPayload),
-      salidasB: production.outputsB.map(outputPayload),
-      salidasBTrozado: production.outputsBTrozado.map(outputPayload),
+      product: production.product,
+      outputs: production.outputs.filter(hasBoxes).map(outputPayload),
+      outputsB: production.outputsB.filter(hasBoxes).map(outputPayload),
+      outputsBTrozado: production.outputsBTrozado.filter(hasBoxes).map(outputPayload),
     })
     replaceProduction(updated)
     goToStep('cierre')
@@ -349,9 +349,37 @@ async function confirmOutput() {
 
 function outputPayload(output) {
   return {
-    calibre: output.caliber,
-    cajas: Number(output.boxes || 0),
-    ...(output.birdsManual ? { aves: Number(output.birds || 0), avesManual: true } : {}),
+    caliber: output.caliber,
+    boxes: Number(output.boxes || 0),
+    ...(output.birdsManual ? { birds: Number(output.birds || 0), birdsManual: true } : {}),
+  }
+}
+
+function hasBoxes(output) {
+  return Number(output.boxes) > 0
+}
+
+function updateConsumption(truckId, birds) {
+  const consumption = activeProduction.value.consumption
+  const index = consumption.findIndex((item) => item.truckId === truckId)
+  const value = Math.max(0, Number(birds || 0))
+  if (index >= 0) consumption[index] = { truckId, birds: value }
+  else consumption.push({ truckId, birds: value })
+}
+
+async function confirmConsumption() {
+  const production = activeProduction.value
+  if (consumptionDifference.value !== 0) return
+  try {
+    replaceProduction(
+      await confirmarConsumo(production.id, {
+        requiredBirds: Number(production.requiredBirds),
+        consumption: production.consumption.filter((item) => Number(item.birds) > 0),
+      }),
+    )
+    goToStep('cierre')
+  } catch (error) {
+    showFeedback(error.message, 'error')
   }
 }
 
@@ -361,6 +389,7 @@ async function closeProduction() {
   if (
     !production.entryConfirmedAt ||
     !production.productionConfirmedAt ||
+    !production.consumptionConfirmedAt ||
     totalBoxes(production.outputs) <= 0
   )
     return showFeedback('Completa todas las etapas antes de cerrar la producción', 'error')
@@ -370,7 +399,7 @@ async function closeProduction() {
     return showFeedback('El vencimiento debe ser posterior a la fabricación', 'error')
   if (production.status === 'completed') return
   try {
-    replaceProduction(await cerrarProduccion(production.id, { terminado: finished }))
+    replaceProduction(await cerrarProduccion(production.id, { finished }))
     showFeedback('Producción cerrada y stock terminado guardado en la base de datos')
   } catch (error) {
     showFeedback(error.message, 'error')
@@ -378,31 +407,10 @@ async function closeProduction() {
 }
 
 function replaceProduction(production) {
-  const normalized = normalizeProduction(production)
+  const normalized = productionViewModel(production)
   const index = productions.value.findIndex((item) => item.id === normalized.id)
   if (index < 0) productions.value.push(normalized)
   else productions.value[index] = normalized
-}
-
-function defaultFinished(date, brand, sequence = 1) {
-  const expiration = new Date(`${date}T12:00:00`)
-  expiration.setDate(expiration.getDate() + 7)
-  const compactDate = date.split('-').reverse().join('').slice(0, 6)
-  return {
-    lot: `${compactDate}-${initials(brand).slice(0, 1) || 'P'}${String(sequence).padStart(2, '0')}`,
-    clientCode: '',
-    manufactureDate: date,
-    expirationDate: expiration.toISOString().slice(0, 10),
-  }
-}
-
-function normalizeFinished(finished, date, brand) {
-  const values = Object.fromEntries(
-    Object.entries(finished || {}).filter(
-      ([, value]) => value !== '' && value !== null && value !== undefined,
-    ),
-  )
-  return { ...defaultFinished(date, brand), ...values }
 }
 
 function canOpenStep(step) {
@@ -411,13 +419,15 @@ function canOpenStep(step) {
   if (production.status === 'completed') return step === 'cierre'
   if (step === 'ingreso') return true
   if (step === 'carga') return Boolean(production.entryConfirmedAt)
-  return Boolean(production.productionConfirmedAt)
+  if (step === 'consumo') return Boolean(production.productionConfirmedAt)
+  return Boolean(production.consumptionConfirmedAt)
 }
 
 function isStepDone(step) {
   const production = activeProduction.value
   if (step === 'ingreso') return Boolean(production?.entryConfirmedAt)
   if (step === 'carga') return Boolean(production?.productionConfirmedAt)
+  if (step === 'consumo') return Boolean(production?.consumptionConfirmedAt)
   return production?.status === 'completed'
 }
 
@@ -444,7 +454,7 @@ function goToTruckEntry({ truck, step }) {
 }
 
 function truckDataFor(production, truckId) {
-  return production?.truckSnapshots?.[truckId] || trucks.value.find((truck) => truck.id === truckId)
+  return trucks.value.find((truck) => truck.id === truckId)
 }
 
 function availableForTruck(truck) {
@@ -480,16 +490,6 @@ function confiscationsFor(truck) {
 
 function totalBoxes(outputs) {
   return totalOutputBoxes(outputs)
-}
-
-function initials(value) {
-  return String(value || '')
-    .split(/\s+/)
-    .filter(Boolean)
-    .map((part) => part[0])
-    .join('')
-    .slice(0, 2)
-    .toUpperCase()
 }
 
 function number(value) {

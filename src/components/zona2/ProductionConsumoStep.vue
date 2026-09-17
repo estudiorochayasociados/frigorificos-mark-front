@@ -63,7 +63,7 @@
         </div>
         <span data-label="Disponibles">{{ number(availableForTruck(truck)) }}</span>
         <NonNegativeInput
-          :model-value="production.consumption[truck.id]"
+          :model-value="consumptionFor(truck.id)"
           class="consumption-quantity-input"
           :maximum="availableForTruck(truck)"
           outlined
@@ -114,6 +114,9 @@ const props = defineProps({
 const totalAvailable = computed(() =>
   props.activeTrucks.reduce((total, truck) => total + props.availableForTruck(truck), 0),
 )
+function consumptionFor(truckId) {
+  return props.production.consumption.find((item) => item.truckId === truckId)?.birds || 0
+}
 const requiredBirds = computed(() => Math.max(0, Number(props.production.requiredBirds || 0)))
 const pendingBirds = computed(() => Math.abs(requiredBirds.value - props.selectedConsumption))
 const allocationPercentage = computed(() => {
