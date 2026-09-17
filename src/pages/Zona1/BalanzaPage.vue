@@ -55,13 +55,13 @@
               <div class="client-cell">
                 <span class="truck-avatar"><Truck :size="19" /></span>
                 <div>
-                  <strong>{{ props.row.marcaComercial?.nombre || '-' }}</strong
-                  ><small>{{ props.row.dte || 'Sin DTE' }}</small>
+                  <strong>{{ props.row.comercial?.marcaComercial?.nombre || '-' }}</strong
+                  ><small>{{ props.row.comercial?.documentos?.dte || 'Sin DTE' }}</small>
                 </div>
               </div>
             </q-td>
             <q-td key="patentes" :props="props">
-              {{ props.row.chasis }} / {{ props.row.acoplado || '-' }}
+              {{ props.row.vehiculo?.chasis }} / {{ props.row.vehiculo?.acoplado || '-' }}
             </q-td>
             <q-td key="classification" :props="props">
               <span :class="['status-pill', truckClassificationClass(props.row)]">
@@ -98,8 +98,8 @@
         <template #mobile-leading
           ><span class="truck-avatar"><Truck :size="20" /></span
         ></template>
-        <template #mobile-title="{ row }">{{ row.marcaComercial?.nombre || '-' }}</template>
-        <template #mobile-subtitle="{ row }">{{ row.chasis }} / {{ row.acoplado || '-' }}</template>
+        <template #mobile-title="{ row }">{{ row.comercial?.marcaComercial?.nombre || '-' }}</template>
+        <template #mobile-subtitle="{ row }">{{ row.vehiculo?.chasis }} / {{ row.vehiculo?.acoplado || '-' }}</template>
         <template #mobile-status="{ row }">
           <span :class="['status-pill', truckStatusClass(row)]">{{ truckStatusLabel(row) }}</span>
         </template>
@@ -189,12 +189,12 @@ const dateRangeValid = computed(() => isValidDateRange(dateRange.desde, dateRang
 const canReorder = computed(() => dateRangeValid.value && dateRange.desde === dateRange.hasta)
 
 const columns = [
-  { name: 'productionOrder', label: 'Orden', field: 'productionOrder', align: 'left' },
-  { name: 'marcaComercial', label: 'Marca comercial', field: 'marcaComercial', align: 'left' },
-  { name: 'patentes', label: 'Patentes', field: 'chasis', align: 'left' },
+  { name: 'productionOrder', label: 'Orden', field: (row) => row.operacion?.ordenProduccion, align: 'left' },
+  { name: 'marcaComercial', label: 'Marca comercial', field: (row) => row.comercial?.marcaComercial, align: 'left' },
+  { name: 'patentes', label: 'Patentes', field: (row) => row.vehiculo?.chasis, align: 'left' },
   { name: 'classification', label: 'Vía', field: 'classification', align: 'left' },
   { name: 'date', label: 'Fecha de entrada', field: (row) => truckDate(row), align: 'left' },
-  { name: 'status', label: 'Estado', field: 'status', align: 'left' },
+  { name: 'status', label: 'Estado', field: (row) => row.operacion?.estado, align: 'left' },
   { name: 'actions', label: 'Acciones', field: 'actions', align: 'right' },
 ]
 
@@ -203,7 +203,7 @@ const truckCardFields = [
   { label: 'Fecha de entrada', value: (truck) => truckDate(truck) },
   { label: 'Orden', value: (truck) => productionOrderForTruck(truck) },
   { label: 'Vía', value: (truck) => truckClassificationLabel(truck) },
-  { label: 'DTE', value: (truck) => truck.dte || 'Sin DTE' },
+  { label: 'DTE', value: (truck) => truck.comercial?.documentos?.dte || 'Sin DTE' },
 ]
 
 onMounted(async () => {
@@ -275,7 +275,7 @@ function goToTruckFaena(truck) {
 function deleteTruck(truck) {
   Dialog.create({
     title: 'Eliminar camión',
-    message: `¿Eliminar el camión de ${truck.marcaComercial?.nombre || 'esta marca'}?`,
+    message: `¿Eliminar el camión de ${truck.comercial?.marcaComercial?.nombre || 'esta marca'}?`,
     cancel: { label: 'Cancelar', flat: true },
     ok: { label: 'Eliminar', color: 'negative' },
     persistent: true,
@@ -284,7 +284,11 @@ function deleteTruck(truck) {
       await eliminarCamionApi(truck.id)
       const remaining = orderedTrucks.value
         .filter((item) => item.id !== truck.id)
-        .map((item, index) => (canReorder.value ? { ...item, productionOrder: index + 1 } : item))
+        .map((item, index) =>
+          canReorder.value
+            ? { ...item, operacion: { ...item.operacion, ordenProduccion: index + 1 } }
+            : item,
+        )
       trucks.value = remaining
       if (remaining.length && canReorder.value) {
         await ordenarCamiones(
@@ -320,7 +324,7 @@ async function dropTruck(targetTruck) {
   reorderedTrucks.splice(toIndex, 0, draggedTruck)
   const reordered = reorderedTrucks.map((truck, index) => ({
     ...truck,
-    productionOrder: index + 1,
+    operacion: { ...truck.operacion, ordenProduccion: index + 1 },
   }))
   trucks.value = reordered
   try {
@@ -347,7 +351,10 @@ async function moveTruck(truck, offset) {
   if (fromIndex < 0 || toIndex < 0 || toIndex >= reorderedTrucks.length) return
   const [movedTruck] = reorderedTrucks.splice(fromIndex, 1)
   reorderedTrucks.splice(toIndex, 0, movedTruck)
-  const reordered = reorderedTrucks.map((item, index) => ({ ...item, productionOrder: index + 1 }))
+  const reordered = reorderedTrucks.map((item, index) => ({
+    ...item,
+    operacion: { ...item.operacion, ordenProduccion: index + 1 },
+  }))
   trucks.value = reordered
   try {
     await ordenarCamiones(

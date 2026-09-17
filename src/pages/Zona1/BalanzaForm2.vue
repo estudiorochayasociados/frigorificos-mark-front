@@ -3,7 +3,7 @@
     <div class="page-content">
       <PageHeader
         class="balanza-form-header"
-        :title="`Faena de ${form.marcaComercial?.nombre || ''}`"
+        :title="`Faena de ${form.comercial.marcaComercial?.nombre || ''}`"
         description="Carga rápida de horarios, novedades y resultados de línea."
       >
         <template #actions
@@ -25,7 +25,7 @@
             </div>
             <div class="form-grid form-grid--dialog">
               <q-input
-                v-model="form.fechaEntrada"
+                v-model="form.fechas.ingreso.fecha"
                 label="Fecha inicio"
                 outlined
                 dense
@@ -35,7 +35,7 @@
                 <template #append>
                   <CalendarDays :size="18" />
                   <q-popup-proxy cover transition-show="scale" transition-hide="scale">
-                    <q-date v-model="form.fechaEntrada" mask="YYYY-MM-DD">
+                    <q-date v-model="form.fechas.ingreso.fecha" mask="YYYY-MM-DD">
                       <div class="row items-center justify-end">
                         <q-btn v-close-popup flat label="OK" color="primary" />
                       </div>
@@ -44,7 +44,7 @@
                 </template>
               </q-input>
               <q-input
-                v-model="form.inicio"
+                v-model="form.fechas.inicioFaena"
                 type="time"
                 label="Hora inicio"
                 outlined
@@ -52,7 +52,7 @@
                 class="field-control"
               />
               <q-input
-                v-model="form.fechaSalida"
+                v-model="form.fechas.egreso.fecha"
                 label="Fecha finalizó"
                 outlined
                 dense
@@ -62,7 +62,7 @@
                 <template #append>
                   <CalendarDays :size="18" />
                   <q-popup-proxy cover transition-show="scale" transition-hide="scale">
-                    <q-date v-model="form.fechaSalida" mask="YYYY-MM-DD">
+                    <q-date v-model="form.fechas.egreso.fecha" mask="YYYY-MM-DD">
                       <div class="row items-center justify-end">
                         <q-btn v-close-popup flat label="OK" color="primary" />
                       </div>
@@ -71,7 +71,7 @@
                 </template>
               </q-input>
               <q-input
-                v-model="form.fin"
+                v-model="form.fechas.finFaena"
                 type="time"
                 label="Hora finalizó"
                 outlined
@@ -91,35 +91,35 @@
             </div>
             <div class="form-grid form-grid--dialog">
               <NonNegativeInput
-                v-model="form.muertos"
+                v-model="form.faena.novedades.muertas"
                 label="Muertos"
                 outlined
                 dense
                 class="field-control"
               />
               <NonNegativeInput
-                v-model="form.decomisos"
+                v-model="form.faena.novedades.decomisadas"
                 label="Decomisos"
                 outlined
                 dense
                 class="field-control"
               />
               <NonNegativeInput
-                v-model="form.decomisosVisc"
+                v-model="form.faena.novedades.decomisadasVisceras"
                 label="Vísceras"
                 outlined
                 dense
                 class="field-control"
               />
               <NonNegativeInput
-                v-model="form.plumas"
+                v-model="form.faena.novedades.plumas"
                 label="Plumas"
                 outlined
                 dense
                 class="field-control"
               />
               <NonNegativeInput
-                v-model="form.vacias"
+                v-model="form.faena.novedades.vacias"
                 label="Vacías"
                 outlined
                 dense
@@ -190,10 +190,8 @@ const error = ref('')
 onMounted(async () => {
   try {
     const camion = await obtenerCamion(route.params.id)
-    Object.assign(form, {
-      ...camion,
-      fechaSalida: camion.fechaSalida || new Date().toISOString().slice(0, 10),
-    })
+    Object.assign(form, camion)
+    form.fechas.egreso.fecha ||= new Date().toISOString().slice(0, 10)
   } catch (exception) {
     error.value = exception.message
     goToList()

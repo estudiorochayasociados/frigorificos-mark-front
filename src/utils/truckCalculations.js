@@ -15,18 +15,21 @@ export function calculateNet(gross, tare) {
 }
 
 export function truckConfiscations(truck) {
-  return Math.max(0, numberValue(truck?.decomisos)) + Math.max(0, numberValue(truck?.decomisosVisc))
+  return (
+    Math.max(0, numberValue(truck?.faena?.novedades?.decomisadas)) +
+    Math.max(0, numberValue(truck?.faena?.novedades?.decomisadasVisceras))
+  )
 }
 
 export function calculateTruckMetrics(truck) {
-  const netoGranja = calculateNet(truck?.brutoOrigen, truck?.taraOrigen)
-  const netoReal = calculateNet(truck?.brutoReal, truck?.taraPlanta)
-  const netoPlanta = calculateNet(truck?.brutoPlanta, truck?.taraPlanta)
+  const netoGranja = calculateNet(truck?.pesos?.origen?.brutoKg, truck?.pesos?.origen?.taraKg)
+  const netoReal = numberValue(truck?.pesos?.faena?.netoKg)
+  const netoPlanta = calculateNet(truck?.pesos?.planta?.brutoKg, truck?.pesos?.planta?.taraKg)
   const diferenciaNetaGranjaPlanta = netoGranja - netoPlanta
   const diferenciaNetaRealPlanta = netoPlanta - netoReal
-  const aves = numberValue(truck?.avesOrigen)
-  const avesGranja = numberValue(truck?.avesGranja)
-  const muertos = numberValue(truck?.muertos)
+  const aves = numberValue(truck?.aves?.planta)
+  const avesGranja = numberValue(truck?.aves?.origen)
+  const muertos = numberValue(truck?.faena?.novedades?.muertas)
   const decomisos = truckConfiscations(truck)
   const promedioGranja = safeDivide(netoGranja, aves)
   const promedioReal = safeDivide(netoReal, aves)

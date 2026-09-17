@@ -56,7 +56,8 @@
             ><strong>{{ number(output.boxes) }} cajas</strong>
           </div>
           <div class="closure-summary-row closure-summary-row--total">
-            <span>Total cajas</span><strong>{{ number(totalBoxes(production.outputs)) }}</strong>
+            <span>Total cajas</span
+            ><strong>{{ number(totalBoxes(production.normalOutputs)) }}</strong>
           </div>
         </section>
         <section class="closure-summary-section">
@@ -66,7 +67,7 @@
             ><strong>{{ number(output.boxes) }} cajas</strong>
           </div>
           <div class="closure-summary-row closure-summary-row--total">
-            <span>Total cajas B</span><strong>{{ number(totalBoxes(production.outputsB)) }}</strong>
+            <span>Total cajas B</span><strong>{{ number(totalBoxes(production.bOutputs)) }}</strong>
           </div>
         </section>
         <section class="closure-summary-section">
@@ -81,7 +82,7 @@
           </div>
           <div class="closure-summary-row closure-summary-row--total">
             <span>Total cajas B · Pollo trozado</span
-            ><strong>{{ number(totalBoxes(production.outputsBTrozado)) }}</strong>
+            ><strong>{{ number(totalBoxes(production.bTrozadoOutputs)) }}</strong>
           </div>
         </section>
       </div>
@@ -95,15 +96,6 @@
           label="Lote"
           :readonly="production.status === 'completed'"
           @update:model-value="$emit('updateFinished', 'lot', $event)"
-        />
-        <q-input
-          :model-value="production.finished.clientCode"
-          class="closure-input"
-          outlined
-          dense
-          label="Código de cliente"
-          :readonly="production.status === 'completed'"
-          @update:model-value="$emit('updateFinished', 'clientCode', $event)"
         />
         <DateInput
           :model-value="production.finished.manufactureDate"
@@ -122,9 +114,9 @@
           <div>
             <strong>Alta de stock automática</strong
             ><span
-              >Se generarán {{ number(totalBoxes(production.outputs)) }} cajas normales y
-              {{ number(totalBoxes(production.outputsB)) }} cajas B y
-              {{ number(totalBoxes(production.outputsBTrozado)) }} cajas B de pollo trozado,
+              >Se generarán {{ number(totalBoxes(production.normalOutputs)) }} cajas normales y
+              {{ number(totalBoxes(production.bOutputs)) }} cajas B y
+              {{ number(totalBoxes(production.bTrozadoOutputs)) }} cajas B de pollo trozado,
               trazadas al lote {{ production.finished.lot || '-' }}.</span
             >
           </div>

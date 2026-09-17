@@ -36,6 +36,7 @@
           v-if="currentStep === 'ingreso'"
           :active-trucks="activeTrucks"
           :active-totals="activeTotals"
+          :readonly="isReadOnly"
           :number="number"
           :birds-for="birdsFor"
           :confiscations-for="confiscationsFor"
@@ -58,19 +59,6 @@
           @update-output-b-trozado-boxes="updateOutputBTrozadoBoxes"
           @update-output-birds="updateOutputBirds"
           @update-output-boxes="updateOutputBoxes"
-        />
-
-        <ProductionConsumoStep
-          v-if="currentStep === 'consumo'"
-          :production="activeProduction"
-          :active-trucks="activeTrucks"
-          :selected-consumption="selectedConsumption"
-          :consumption-difference="consumptionDifference"
-          :number="number"
-          :available-for-truck="availableForTruck"
-          :truck-use-order="truckUseOrder"
-          @confirm-consumption="confirmConsumption"
-          @update-consumption="updateConsumption"
         />
 
         <ProductionCierreStep
@@ -111,18 +99,15 @@ import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import ProductionCargaStep from '@/components/zona2/ProductionCargaStep.vue'
 import ProductionCierreStep from '@/components/zona2/ProductionCierreStep.vue'
-import ProductionConsumoStep from '@/components/zona2/ProductionConsumoStep.vue'
 import ProductionIngresoStep from '@/components/zona2/ProductionIngresoStep.vue'
 import { useCamiones } from '@/composables/useCamiones'
 import { useProducciones } from '@/composables/useProducciones'
 import { dateFromQuery, todayIsoDate } from '@/utils/date'
 import { AlertCircle, ArrowLeft, CheckCircle2, Truck } from '@lucide/vue'
 import {
-  DEFAULT_CALIBERS,
   calcularRindeProduccion,
   consumedByTruck,
-  outputRow,
-  outputRows,
+  outputRowsByType,
   totalOutputBoxes,
   truckAvailableBirds,
   truckBirds,
@@ -138,7 +123,6 @@ const {
   obtenerProduccion,
   confirmarIngreso,
   confirmarProduccion,
-  confirmarConsumo,
   cerrarProduccion,
 } = useProducciones()
 const productions = ref([])
@@ -153,7 +137,9 @@ onMounted(async () => {
       const production = await obtenerProduccion(route.query.id)
       productions.value = [productionViewModel(production)]
     }
-    trucks.value = await Promise.all((activeProduction.value?.truckIds || []).map(obtenerCamion))
+    trucks.value = await Promise.all(
+      (activeProduction.value?.entries || []).map(({ truckId }) => obtenerCamion(truckId)),
+    )
   } catch (error) {
     showFeedback(error.message, 'error')
   }
@@ -162,16 +148,14 @@ onMounted(async () => {
 const flowSteps = [
   { number: '1', value: 'ingreso', label: 'Ingreso' },
   { number: '2', value: 'carga', label: 'Producción' },
-  { number: '3', value: 'consumo', label: 'Consumo' },
-  { number: '4', value: 'cierre', label: 'Cierre' },
+  { number: '3', value: 'cierre', label: 'Cierre' },
 ]
 
 const activeProduction = computed(() =>
   productions.value.find((production) => production.id === route.query.id),
 )
-const activeBrandName = computed(
-  () => activeTrucks.value[0]?.marcaComercial?.nombre || activeProduction.value?.brandId || '-',
-)
+const activeBrandName = computed(() => activeProduction.value?.context?.brand?.nombre || '-')
+const isReadOnly = computed(() => activeProduction.value?.status === 'completed')
 const currentStep = computed(() => {
   const requested = route.query.step
   if (flowSteps.some((step) => step.value === requested) && canOpenStep(requested)) return requested
@@ -182,8 +166,8 @@ const currentStepMeta = computed(
 )
 const activeTrucks = computed(() => {
   if (!activeProduction.value) return []
-  return activeProduction.value.truckIds
-    .map((id) => truckDataFor(activeProduction.value, id))
+  return activeProduction.value.entries
+    .map(({ truckId }) => truckDataFor(activeProduction.value, truckId))
     .filter(Boolean)
     .sort((left, right) => truckUseOrder(left.id) - truckUseOrder(right.id))
 })
@@ -195,30 +179,22 @@ const activeTotals = computed(() => ({
   available: activeTrucks.value.reduce((total, truck) => total + availableForTruck(truck), 0),
 }))
 const selectedConsumption = computed(() =>
-  (activeProduction.value?.consumption || []).reduce(
-    (total, item) => total + Math.max(0, Number(item.birds || 0)),
+  (activeProduction.value?.entries || []).reduce(
+    (total, entry) => total + Math.max(0, Number(entry.consumedBirds || 0)),
     0,
   ),
 )
-const consumptionDifference = computed(
-  () => selectedConsumption.value - Number(activeProduction.value?.requiredBirds || 0),
-)
 const producedOutputs = computed(() =>
-  (activeProduction.value?.outputs || []).filter((output) => Number(output.boxes || 0) > 0),
+  (activeProduction.value?.normalOutputs || []).filter((output) => Number(output.boxes || 0) > 0),
 )
 const producedOutputsB = computed(() =>
-  (activeProduction.value?.outputsB || []).filter((output) => Number(output.boxes || 0) > 0),
+  (activeProduction.value?.bOutputs || []).filter((output) => Number(output.boxes || 0) > 0),
 )
 const producedOutputsBTrozado = computed(() =>
-  (activeProduction.value?.outputsBTrozado || []).filter((output) => Number(output.boxes || 0) > 0),
+  (activeProduction.value?.bTrozadoOutputs || []).filter((output) => Number(output.boxes || 0) > 0),
 )
 const yieldSummary = computed(() =>
-  calcularRindeProduccion(
-    activeTrucks.value,
-    activeProduction.value?.outputs,
-    activeProduction.value?.outputsB,
-    activeProduction.value?.outputsBTrozado,
-  ),
+  calcularRindeProduccion(activeTrucks.value, activeProduction.value?.outputs),
 )
 
 watch(
@@ -230,24 +206,33 @@ watch(
 )
 
 function productionViewModel(production) {
+  const outputs = [...(production.outputs || [])]
+  ;['normal', 'b', 'b_trozado'].forEach((type) => {
+    outputRowsByType(outputs, type).forEach((output) => {
+      if (!outputs.includes(output)) outputs.push(output)
+    })
+  })
   return {
     ...production,
-    outputs: DEFAULT_CALIBERS.map((caliber) => outputRow(production.outputs, caliber)),
-    outputsB: outputRows(production.outputsB),
-    outputsBTrozado: DEFAULT_CALIBERS.map((caliber) => outputRow(production.outputsBTrozado, caliber)),
-    consumption: production.consumption,
+    context: production.context || { date: '', brand: {} },
+    entries: production.entries || [],
+    outputs,
+    normalOutputs: outputRowsByType(outputs, 'normal'),
+    bOutputs: outputRowsByType(outputs, 'b'),
+    bTrozadoOutputs: outputRowsByType(outputs, 'b_trozado'),
+    finished: production.finished || {},
   }
 }
 
 function nextStepFor(production) {
-  if (production.status === 'completed' || production.consumptionConfirmedAt) return 'cierre'
-  if (production.productionConfirmedAt) return 'consumo'
+  if (production.status === 'completed' || production.productionConfirmedAt) return 'cierre'
   if (production.entryConfirmedAt) return 'carga'
   return 'ingreso'
 }
 
 async function confirmEntry() {
   const production = activeProduction.value
+  if (isReadOnly.value) return
   if (!production || activeTrucks.value.length === 0)
     return showFeedback('No hay camiones asociados a esta producción', 'error')
   if (production.entryConfirmedAt) return goToStep('carga')
@@ -260,28 +245,31 @@ async function confirmEntry() {
 }
 
 function updateOutputBoxes(caliber, value) {
-  const output = activeProduction.value.outputs.find((item) => item.caliber === caliber)
+  if (isReadOnly.value) return
+  const output = activeProduction.value.normalOutputs.find((item) => item.caliber === caliber)
   if (output) output.boxes = value
 }
 
 function updateOutputBBoxes(caliber, value) {
-  activeProduction.value.outputsB = outputRows(activeProduction.value.outputsB)
-  const output = activeProduction.value.outputsB.find((item) => item.caliber === caliber)
+  if (isReadOnly.value) return
+  const output = activeProduction.value.bOutputs.find((item) => item.caliber === caliber)
   if (output) output.boxes = value
 }
 
 function updateOutputBTrozadoBoxes(caliber, value) {
-  const output = activeProduction.value.outputsBTrozado.find((item) => item.caliber === caliber)
+  if (isReadOnly.value) return
+  const output = activeProduction.value.bTrozadoOutputs.find((item) => item.caliber === caliber)
   if (output) output.boxes = value
 }
 
 function updateOutputBirds(type, caliber, value) {
+  if (isReadOnly.value) return
   const outputs =
     type === 'normal'
-      ? activeProduction.value.outputs
+      ? activeProduction.value.normalOutputs
       : type === 'b'
-        ? activeProduction.value.outputsB
-        : activeProduction.value.outputsBTrozado
+        ? activeProduction.value.bOutputs
+        : activeProduction.value.bTrozadoOutputs
   const output = outputs.find((item) => item.caliber === caliber)
   if (!output) return
   output.birds = value
@@ -289,12 +277,13 @@ function updateOutputBirds(type, caliber, value) {
 }
 
 function resetOutputBirds(type, caliber) {
+  if (isReadOnly.value) return
   const outputs =
     type === 'normal'
-      ? activeProduction.value.outputs
+      ? activeProduction.value.normalOutputs
       : type === 'b'
-        ? activeProduction.value.outputsB
-        : activeProduction.value.outputsBTrozado
+        ? activeProduction.value.bOutputs
+        : activeProduction.value.bTrozadoOutputs
   const output = outputs.find((item) => item.caliber === caliber)
   if (!output) return
   delete output.birds
@@ -302,43 +291,42 @@ function resetOutputBirds(type, caliber) {
 }
 
 function updateFinished(field, value) {
+  if (isReadOnly.value) return
   activeProduction.value.finished[field] = value
 }
 
 async function confirmOutput() {
   const production = activeProduction.value
-  const invalidOutput = production.outputs.some(
+  if (isReadOnly.value) return
+  const invalidOutput = production.normalOutputs.some(
     (output) => !Number.isInteger(Number(output.boxes)) || Number(output.boxes) < 0,
   )
   if (invalidOutput) return showFeedback('Las cajas deben ser números enteros positivos', 'error')
-  const invalidOutputB = production.outputsB.some(
+  const invalidOutputB = production.bOutputs.some(
     (output) => !Number.isInteger(Number(output.boxes)) || Number(output.boxes) < 0,
   )
   if (invalidOutputB)
     return showFeedback('Las cajas B deben ser números enteros positivos', 'error')
-  const invalidOutputBTrozado = production.outputsBTrozado.some(
+  const invalidOutputBTrozado = production.bTrozadoOutputs.some(
     (output) => !Number.isInteger(Number(output.boxes)) || Number(output.boxes) < 0,
   )
   if (invalidOutputBTrozado)
     return showFeedback('Las cajas B de pollo trozado deben ser números enteros positivos', 'error')
   const invalidBirdAdjustment = [
-    ...production.outputs,
-    ...production.outputsB,
-    ...production.outputsBTrozado,
+    ...production.normalOutputs,
+    ...production.bOutputs,
+    ...production.bTrozadoOutputs,
   ].some(
     (output) =>
       output.birdsManual && (!Number.isInteger(Number(output.birds)) || Number(output.birds) < 0),
   )
   if (invalidBirdAdjustment)
     return showFeedback('Las aves ajustadas deben ser números enteros positivos', 'error')
-  if (totalBoxes(production.outputs) <= 0)
+  if (totalBoxes(production.normalOutputs) <= 0)
     return showFeedback('Ingresa al menos una caja producida', 'error')
   try {
     const updated = await confirmarProduccion(production.id, {
-      product: production.product,
       outputs: production.outputs.filter(hasBoxes).map(outputPayload),
-      outputsB: production.outputsB.filter(hasBoxes).map(outputPayload),
-      outputsBTrozado: production.outputsBTrozado.filter(hasBoxes).map(outputPayload),
     })
     replaceProduction(updated)
     goToStep('cierre')
@@ -349,6 +337,7 @@ async function confirmOutput() {
 
 function outputPayload(output) {
   return {
+    type: output.type,
     caliber: output.caliber,
     boxes: Number(output.boxes || 0),
     ...(output.birdsManual ? { birds: Number(output.birds || 0), birdsManual: true } : {}),
@@ -359,38 +348,14 @@ function hasBoxes(output) {
   return Number(output.boxes) > 0
 }
 
-function updateConsumption(truckId, birds) {
-  const consumption = activeProduction.value.consumption
-  const index = consumption.findIndex((item) => item.truckId === truckId)
-  const value = Math.max(0, Number(birds || 0))
-  if (index >= 0) consumption[index] = { truckId, birds: value }
-  else consumption.push({ truckId, birds: value })
-}
-
-async function confirmConsumption() {
-  const production = activeProduction.value
-  if (consumptionDifference.value !== 0) return
-  try {
-    replaceProduction(
-      await confirmarConsumo(production.id, {
-        requiredBirds: Number(production.requiredBirds),
-        consumption: production.consumption.filter((item) => Number(item.birds) > 0),
-      }),
-    )
-    goToStep('cierre')
-  } catch (error) {
-    showFeedback(error.message, 'error')
-  }
-}
-
 async function closeProduction() {
   const production = activeProduction.value
+  if (isReadOnly.value) return
   const finished = production.finished
   if (
     !production.entryConfirmedAt ||
     !production.productionConfirmedAt ||
-    !production.consumptionConfirmedAt ||
-    totalBoxes(production.outputs) <= 0
+    totalBoxes(production.normalOutputs) <= 0
   )
     return showFeedback('Completa todas las etapas antes de cerrar la producción', 'error')
   if (!finished.lot || !finished.manufactureDate || !finished.expirationDate)
@@ -399,8 +364,8 @@ async function closeProduction() {
     return showFeedback('El vencimiento debe ser posterior a la fabricación', 'error')
   if (production.status === 'completed') return
   try {
-    replaceProduction(await cerrarProduccion(production.id, { finished }))
-    showFeedback('Producción cerrada y stock terminado guardado en la base de datos')
+    await cerrarProduccion(production.id, { finished })
+    goToDashboard()
   } catch (error) {
     showFeedback(error.message, 'error')
   }
@@ -416,18 +381,16 @@ function replaceProduction(production) {
 function canOpenStep(step) {
   const production = activeProduction.value
   if (!production) return false
-  if (production.status === 'completed') return step === 'cierre'
+  if (production.status === 'completed') return true
   if (step === 'ingreso') return true
   if (step === 'carga') return Boolean(production.entryConfirmedAt)
-  if (step === 'consumo') return Boolean(production.productionConfirmedAt)
-  return Boolean(production.consumptionConfirmedAt)
+  return Boolean(production.productionConfirmedAt)
 }
 
 function isStepDone(step) {
   const production = activeProduction.value
   if (step === 'ingreso') return Boolean(production?.entryConfirmedAt)
   if (step === 'carga') return Boolean(production?.productionConfirmedAt)
-  if (step === 'consumo') return Boolean(production?.consumptionConfirmedAt)
   return production?.status === 'completed'
 }
 
@@ -446,6 +409,7 @@ function goToDashboard() {
 }
 
 function goToTruckEntry({ truck, step }) {
+  if (isReadOnly.value) return
   router.push({
     name: step === 2 ? 'balanza-form2' : 'balanza-form1',
     params: { id: String(truck.id) },
@@ -462,16 +426,18 @@ function availableForTruck(truck) {
 }
 
 function truckUseOrder(truckId) {
-  const order = Number(activeProduction.value?.truckOrder?.[truckId] || 0)
+  const order = Number(
+    activeProduction.value?.entries.find((entry) => entry.truckId === truckId)?.order || 0,
+  )
   if (Number.isInteger(order) && order > 0) return order
-  return (activeProduction.value?.truckIds.indexOf(truckId) ?? 0) + 1
+  return (activeProduction.value?.entries.findIndex((entry) => entry.truckId === truckId) ?? 0) + 1
 }
 
 function totalsFor(list) {
   return list.reduce(
     (totals, truck) => {
       totals.birds += birdsFor(truck)
-      totals.deaths += Math.max(0, Number(truck.muertos || 0))
+      totals.deaths += Math.max(0, Number(truck.faena?.novedades?.muertas || 0))
       totals.confiscations += confiscationsFor(truck)
       totals.available += availableForTruck(truck)
       return totals
@@ -565,8 +531,8 @@ function showFeedback(message, type = 'success') {
   .production-steps::before {
     position: absolute;
     top: 16px;
-    right: 12.5%;
-    left: 12.5%;
+    right: 16.6667%;
+    left: 16.6667%;
     height: 2px;
     background: #dededc;
     content: '';
@@ -640,16 +606,14 @@ function showFeedback(message, type = 'success') {
     padding: 0;
   }
 
-  :deep(.raw-material-table),
-  :deep(.consumption-table) {
+  :deep(.raw-material-table) {
     overflow: visible;
     border: 0;
     border-radius: 0;
     background: transparent;
   }
 
-  :deep(.raw-material-table-row:not(.raw-material-table-row--total)),
-  :deep(.consumption-table-row:not(.consumption-table-row--total)) {
+  :deep(.raw-material-table-row:not(.raw-material-table-row--total)) {
     gap: 13px 18px;
     padding: 15px;
     border-radius: 16px;
@@ -657,13 +621,11 @@ function showFeedback(message, type = 'success') {
     box-shadow: 0 4px 16px rgb(0 0 0 / 4%);
   }
 
-  :deep(.raw-material-table-row strong),
-  :deep(.consumption-table-row > span) {
+  :deep(.raw-material-table-row strong) {
     font-size: 14px;
   }
 
-  :deep(.raw-material-table-row [data-label]::before),
-  :deep(.consumption-table-row [data-label]::before) {
+  :deep(.raw-material-table-row [data-label]::before) {
     font-size: 11px;
   }
 
@@ -755,60 +717,6 @@ function showFeedback(message, type = 'success') {
     font-size: 17px;
   }
 
-  :deep(.consumption-summary) {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 8px;
-    overflow: visible;
-    border: 0;
-    border-radius: 0;
-    background: transparent;
-  }
-
-  :deep(.consumption-summary > label) {
-    grid-column: 1 / -1;
-  }
-
-  :deep(.consumption-summary > div),
-  :deep(.consumption-summary > label) {
-    min-height: 58px;
-    padding: 9px 12px;
-    border: 1px solid var(--line);
-    border-radius: 13px;
-    background: #fff;
-  }
-
-  :deep(.consumption-summary-input) {
-    width: 126px;
-  }
-
-  :deep(.consumption-summary-input .q-field__control),
-  :deep(.consumption-summary-input .q-field__native),
-  :deep(.consumption-summary-input .q-field__marginal),
-  :deep(.consumption-quantity-input .q-field__control),
-  :deep(.consumption-quantity-input .q-field__native),
-  :deep(.consumption-quantity-input .q-field__marginal) {
-    min-height: 40px;
-    height: 40px;
-  }
-
-  :deep(.consumption-table-row .consumption-quantity-input) {
-    margin-top: 2px;
-  }
-
-  :deep(.consumption-table-row--total) {
-    grid-template-columns: 1fr auto;
-    min-height: 54px;
-    padding: 0 15px;
-    border: 1px solid var(--line);
-    border-radius: 14px;
-    background: #fff;
-  }
-
-  :deep(.consumption-table-row--total > :nth-child(2)),
-  :deep(.consumption-table-row--total > :nth-child(3)) {
-    display: none;
-  }
-
   :deep(.closure-grid) {
     gap: 10px;
   }
@@ -853,7 +761,6 @@ function showFeedback(message, type = 'success') {
 
   :deep(.production-entry-step .production-stage-actions),
   :deep(.production-output-step .production-stage-actions),
-  :deep(.production-consumption-step .production-stage-actions),
   :deep(.production-closure-step .production-stage-actions) {
     position: sticky;
     bottom: 0;

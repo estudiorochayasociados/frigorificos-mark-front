@@ -1,36 +1,30 @@
 export function emptyTruckForm() {
   return {
     id: null,
-    marcaComercialId: '',
-    dte: '',
-    remito: '',
-    chasis: '',
-    acoplado: '',
-    fechaEntrada: new Date().toISOString().slice(0, 10),
-    fechaSalida: new Date().toISOString().slice(0, 10),
-    horarioLlegada: '',
-    brutoOrigen: 0,
-    taraOrigen: 0,
-    brutoReal: 0,
-    brutoPlanta: 0,
-    taraPlanta: 0,
-    avesOrigen: 0,
-    avesGranja: 0,
-    vacias: 0,
-    inicio: '',
-    fin: '',
-    muertos: 0,
-    decomisos: 0,
-    decomisosVisc: 0,
-    plumas: 0,
-    loteSenasa: '',
-    productionOrder: 0,
-    status: 'registrado',
+    comercial: { marcaComercialId: '', loteSenasa: '', documentos: { dte: '', remito: '' } },
+    vehiculo: { chasis: '', acoplado: '' },
+    pesos: {
+      origen: { brutoKg: 0, taraKg: 0 },
+      planta: { brutoKg: 0, taraKg: 0 },
+      faena: { brutoKg: 0, netoKg: 0 },
+    },
+    aves: { origen: 0, planta: 0 },
+    faena: {
+      novedades: { muertas: 0, decomisadas: 0, decomisadasVisceras: 0, vacias: 0, plumas: 0 },
+      confirmadaEn: null,
+    },
+    fechas: {
+      ingreso: { fecha: new Date().toISOString().slice(0, 10), hora: '' },
+      egreso: { fecha: new Date().toISOString().slice(0, 10), hora: '' },
+      inicioFaena: '',
+      finFaena: '',
+    },
+    operacion: { ordenProduccion: 0, estado: 'registrado' },
   }
 }
 
 export function productionOrderFor(trucks, truck) {
-  const order = Number(truck.productionOrder || 0)
+  const order = Number(truck?.operacion?.ordenProduccion || 0)
   if (Number.isInteger(order) && order > 0) return order
   return trucks.findIndex((item) => item.id === truck.id) + 1
 }
@@ -39,14 +33,14 @@ export function compareProductionOrder(trucks) {
   return (left, right) => {
     const orderDifference = productionOrderFor(trucks, left) - productionOrderFor(trucks, right)
     if (orderDifference) return orderDifference
-    return `${left.fechaEntrada || ''} ${left.horarioLlegada || ''}`.localeCompare(
-      `${right.fechaEntrada || ''} ${right.horarioLlegada || ''}`,
+    return `${left?.fechas?.ingreso?.fecha || ''} ${left?.fechas?.ingreso?.hora || ''}`.localeCompare(
+      `${right?.fechas?.ingreso?.fecha || ''} ${right?.fechas?.ingreso?.hora || ''}`,
     )
   }
 }
 
 export function truckStatusKey(truck) {
-  return truck?.status === 'faeneado' || truck?.lineConfirmedAt
+  return truck?.operacion?.estado === 'faeneado' || truck?.faena?.confirmadaEn
     ? 'faeneado'
     : 'registrado'
 }
@@ -60,7 +54,7 @@ export function truckStatusClass(truck) {
 }
 
 export function truckClassificationKey(truck) {
-  return truck?.dte?.trim() ? 'blanco' : 'negro'
+  return truck?.comercial?.documentos?.dte?.trim() ? 'blanco' : 'negro'
 }
 
 export function truckClassificationLabel(truck) {
@@ -72,5 +66,5 @@ export function truckClassificationClass(truck) {
 }
 
 export function truckDate(truck) {
-  return new Date(`${truck.fechaEntrada}T00:00:00`).toLocaleDateString('es-AR')
+  return new Date(`${truck?.fechas?.ingreso?.fecha}T00:00:00`).toLocaleDateString('es-AR')
 }

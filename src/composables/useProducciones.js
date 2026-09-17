@@ -38,13 +38,6 @@ export function useProducciones() {
     })
   }
 
-  function confirmarConsumo(id, datos) {
-    return apiRequest(`/producciones/${encodeURIComponent(id)}/consumo`, {
-      method: 'PATCH',
-      body: JSON.stringify(datos),
-    })
-  }
-
   function cerrarProduccion(id, datos) {
     return apiRequest(`/producciones/${encodeURIComponent(id)}/cierre`, {
       method: 'PATCH',
@@ -59,7 +52,6 @@ export function useProducciones() {
     agregarCamiones,
     confirmarIngreso,
     confirmarProduccion,
-    confirmarConsumo,
     cerrarProduccion,
   }
 }

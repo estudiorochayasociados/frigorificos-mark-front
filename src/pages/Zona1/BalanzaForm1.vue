@@ -25,7 +25,7 @@
             </div>
             <div class="form-grid form-grid--dialog">
               <q-select
-                v-model="form.marcaComercialId"
+                v-model="form.comercial.marcaComercialId"
                 :options="brandOptions"
                 :loading="cargandoMarcas"
                 label="Marca comercial *"
@@ -53,14 +53,14 @@
             </div>
             <div class="form-grid form-grid-spaced">
               <q-input
-                v-model="form.loteSenasa"
+                v-model="form.comercial.loteSenasa"
                 label="Lote SENASA"
                 outlined
                 dense
                 class="field-control"
               />
-              <q-input v-model="form.dte" label="Numero DTE" outlined dense class="field-control" />
-              <q-input v-model="form.remito" label="Remito" outlined dense class="field-control" />
+              <q-input v-model="form.comercial.documentos.dte" label="Numero DTE" outlined dense class="field-control" />
+              <q-input v-model="form.comercial.documentos.remito" label="Remito" outlined dense class="field-control" />
             </div>
           </section>
 
@@ -74,7 +74,7 @@
             </div>
             <div class="form-grid form-grid--dialog">
               <q-input
-                v-model="form.chasis"
+                v-model="form.vehiculo.chasis"
                 label="Patente chasis *"
                 outlined
                 dense
@@ -83,14 +83,14 @@
                 :rules="[(value) => !!value || 'Campo obligatorio']"
               />
               <q-input
-                v-model="form.acoplado"
+                v-model="form.vehiculo.acoplado"
                 label="Patente acoplado"
                 outlined
                 dense
                 class="field-control uppercase-field"
               />
               <q-input
-                v-model="form.horarioLlegada"
+                v-model="form.fechas.ingreso.hora"
                 type="time"
                 label="Horario llegada"
                 outlined
@@ -110,7 +110,7 @@
             </div>
             <div class="form-grid">
               <NonNegativeInput
-                v-model="form.brutoOrigen"
+                v-model="form.pesos.origen.brutoKg"
                 label="Peso bruto granja"
                 suffix="kg"
                 outlined
@@ -118,7 +118,7 @@
                 class="field-control"
               />
               <NonNegativeInput
-                v-model="form.brutoReal"
+                v-model="form.pesos.faena.brutoKg"
                 label="Peso bruto real"
                 suffix="kg"
                 outlined
@@ -126,7 +126,7 @@
                 class="field-control"
               />
               <NonNegativeInput
-                v-model="form.brutoPlanta"
+                v-model="form.pesos.planta.brutoKg"
                 label="Peso bruto planta"
                 suffix="kg"
                 outlined
@@ -136,7 +136,7 @@
             </div>
             <div class="form-grid form-grid-spaced">
               <NonNegativeInput
-                v-model="form.taraOrigen"
+                v-model="form.pesos.origen.taraKg"
                 label="Tara granja"
                 suffix="kg"
                 outlined
@@ -144,7 +144,7 @@
                 class="field-control"
               />
               <NonNegativeInput
-                v-model="form.taraPlanta"
+                v-model="form.pesos.planta.taraKg"
                 label="Tara de entrada"
                 suffix="kg"
                 outlined
@@ -154,14 +154,14 @@
             </div>
             <div class="form-grid form-grid-spaced">
               <NonNegativeInput
-                v-model="form.avesGranja"
+                v-model="form.aves.origen"
                 label="Aves origen"
                 outlined
                 dense
                 class="field-control"
               />
               <NonNegativeInput
-                v-model="form.avesOrigen"
+                v-model="form.aves.planta"
                 label="Cantidad de aves planta"
                 outlined
                 dense
@@ -276,7 +276,7 @@
 
 <script setup>
 import PageHeader from '@/components/PageHeader.vue'
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Plus, Save, X } from '@lucide/vue'
 import NonNegativeInput from '@/components/NonNegativeInput.vue'
@@ -314,7 +314,8 @@ onMounted(async () => {
     await listarMarcasComerciales()
     if (!route.params.id) return
     const camion = await obtenerCamion(route.params.id)
-    Object.assign(form, camion, { marcaComercialId: camion.marcaComercial?.id || '' })
+    Object.assign(form, camion)
+    form.comercial.marcaComercialId = camion.comercial?.marcaComercial?.id || ''
   } catch (exception) {
     error.value = exception.message
     goToList()
@@ -324,6 +325,13 @@ onMounted(async () => {
 })
 
 const formMetrics = computed(() => calculateTruckMetrics(form))
+watch(
+  () => [form.pesos.faena.brutoKg, form.pesos.planta.taraKg],
+  () => {
+    form.pesos.faena.netoKg = calculateNet(form.pesos.faena.brutoKg, form.pesos.planta.taraKg)
+  },
+  { immediate: true },
+)
 const brandOptions = computed(() =>
   marcas.value.map((marca) => ({
     label: `${marca.nombre} (${marca.codigo || 'Sin código'})`,
@@ -331,17 +339,17 @@ const brandOptions = computed(() =>
   })),
 )
 const clientName = computed(() => {
-  const marca = marcas.value.find((item) => item.id === form.marcaComercialId)
+  const marca = marcas.value.find((item) => item.id === form.comercial.marcaComercialId)
   return marca?.nombre || ''
 })
 const formValidationMessage = computed(() => {
-  if (!form.marcaComercialId) return 'Seleccioná una marca comercial.'
-  if (!form.chasis?.trim()) return 'Ingresá la patente de chasis.'
-  if (Number(form.avesOrigen || 0) <= 0) return 'Ingresá una cantidad de aves mayor a cero.'
+  if (!form.comercial.marcaComercialId) return 'Seleccioná una marca comercial.'
+  if (!form.vehiculo.chasis?.trim()) return 'Ingresá la patente de chasis.'
+  if (Number(form.aves.planta || 0) <= 0) return 'Ingresá una cantidad de aves mayor a cero.'
   if (
-    calculateNet(form.brutoOrigen, form.taraOrigen) <= 0 &&
-    calculateNet(form.brutoReal, form.taraPlanta) <= 0 &&
-    calculateNet(form.brutoPlanta, form.taraPlanta) <= 0
+    calculateNet(form.pesos.origen.brutoKg, form.pesos.origen.taraKg) <= 0 &&
+    calculateNet(form.pesos.faena.brutoKg, form.pesos.planta.taraKg) <= 0 &&
+    calculateNet(form.pesos.planta.brutoKg, form.pesos.planta.taraKg) <= 0
   ) {
     return 'Ingresá al menos un peso bruto mayor que su tara.'
   }
@@ -355,9 +363,9 @@ async function saveTruck() {
   guardando.value = true
   error.value = ''
   try {
-    const payload = { ...form }
-    delete payload.marcaComercial
-    payload.avesOrigen = Number(form.avesOrigen || 0)
+    const payload = { ...form, comercial: { ...form.comercial } }
+    delete payload.comercial.marcaComercial
+    payload.aves = { ...form.aves, planta: Number(form.aves.planta || 0) }
     if (form.id) await actualizarCamion(form.id, payload)
     else await crearCamion(payload)
     goToList()
@@ -387,7 +395,7 @@ async function createBrand() {
   try {
     const marca = await crearMarcaComercial(datos)
     await listarMarcasComerciales()
-    form.marcaComercialId = marca.id
+    form.comercial.marcaComercialId = marca.id
     closeCreateBrand()
   } catch (exception) {
     brandError.value = exception.message

@@ -26,16 +26,31 @@ export function outputRows(outputs) {
   return DEFAULT_CALIBERS.map((caliber) => ({ caliber, boxes: 0 }))
 }
 
+export function outputRowsByType(outputs, type) {
+  const typedOutputs = (outputs || []).filter((output) => output.type === type)
+  const rows = DEFAULT_CALIBERS.map(
+    (caliber) =>
+      typedOutputs.find((output) => String(output.caliber) === caliber) || {
+        type,
+        caliber,
+        boxes: 0,
+      },
+  )
+  return rows.concat(
+    typedOutputs.filter((output) => !DEFAULT_CALIBERS.includes(String(output.caliber))),
+  )
+}
+
 export function truckBirds(truck) {
-  return Math.max(0, Number(truck?.avesOrigen || 0))
+  return Math.max(0, Number(truck?.aves?.planta || 0))
 }
 
 export function truckConfiscations(truck) {
-  return Math.max(0, Number(truck?.decomisos || 0))
+  return Math.max(0, Number(truck?.faena?.novedades?.decomisadas || 0))
 }
 
 export function truckLosses(truck) {
-  return Math.max(0, Number(truck?.muertos || 0)) + truckConfiscations(truck)
+  return Math.max(0, Number(truck?.faena?.novedades?.muertas || 0)) + truckConfiscations(truck)
 }
 
 export function truckAvailableBirds(truck) {
@@ -43,7 +58,7 @@ export function truckAvailableBirds(truck) {
 }
 
 export function productionDateForTruck(truck) {
-  return truck?.fechaEntrada || ''
+  return truck?.fechas?.ingreso?.fecha || ''
 }
 
 export function groupTrucksByBrand(trucks, date) {
@@ -53,13 +68,13 @@ export function groupTrucksByBrand(trucks, date) {
   trucks
     .filter(
       (truck) =>
-        truck?.marcaComercial?.id &&
+        truck?.comercial?.marcaComercial?.id &&
         dateMatchesFilter(productionDateForTruck(truck), date) &&
-        (!date || Boolean(truck.lineConfirmedAt)),
+        (!date || Boolean(truck.faena?.confirmadaEn)),
     )
     .forEach((truck) => {
       const truckDate = productionDateForTruck(truck)
-      const brandId = truck.marcaComercial.id
+      const brandId = truck.comercial.marcaComercial.id
       const key = splitByDate ? `${brandId}::${truckDate}` : brandId
       const current = groups.get(key) || []
       current.push(truck)
@@ -67,28 +82,28 @@ export function groupTrucksByBrand(trucks, date) {
     })
   return [...groups.entries()].map(([key, brandTrucks]) => ({
     brandId: splitByDate ? key.split('::')[0] : key,
-    brand: brandTrucks[0].marcaComercial.nombre,
+    brand: brandTrucks[0].comercial.marcaComercial.nombre,
     trucks: brandTrucks.sort(compareProductionOrder),
     date: productionDateForTruck(brandTrucks[0]),
   }))
 }
 
 function compareProductionOrder(left, right) {
-  const leftOrder = Number(left.productionOrder || 0)
-  const rightOrder = Number(right.productionOrder || 0)
+  const leftOrder = Number(left?.operacion?.ordenProduccion || 0)
+  const rightOrder = Number(right?.operacion?.ordenProduccion || 0)
   if (leftOrder > 0 && rightOrder > 0 && leftOrder !== rightOrder) return leftOrder - rightOrder
   if (leftOrder > 0 && rightOrder <= 0) return -1
   if (rightOrder > 0 && leftOrder <= 0) return 1
-  const leftDate = `${productionDateForTruck(left)} ${left.horarioLlegada || '99:99'}`
-  const rightDate = `${productionDateForTruck(right)} ${right.horarioLlegada || '99:99'}`
+  const leftDate = `${productionDateForTruck(left)} ${left?.fechas?.ingreso?.hora || '99:99'}`
+  const rightDate = `${productionDateForTruck(right)} ${right?.fechas?.ingreso?.hora || '99:99'}`
   return leftDate.localeCompare(rightDate)
 }
 
 export function consumedByTruck(productions, excludedProductionId = null) {
   return productions.reduce((result, production) => {
-    if (production.id === excludedProductionId || !production.consumptionConfirmedAt) return result
-    ;(production.consumption || []).forEach(({ truckId, birds }) => {
-      result[truckId] = Number(result[truckId] || 0) + Number(birds || 0)
+    if (production.id === excludedProductionId || !production.productionConfirmedAt) return result
+    ;(production.entries || []).forEach(({ truckId, consumedBirds }) => {
+      result[truckId] = Number(result[truckId] || 0) + Number(consumedBirds || 0)
     })
     return result
   }, {})
@@ -121,23 +136,30 @@ export function totalOutputBoxesB(outputs) {
   )
 }
 
-export function calcularRindeProduccion(trucks, outputs, outputsB, outputsBTrozado) {
-  const cajas =
-    totalOutputBoxes(outputs) + totalOutputBoxes(outputsB) + totalOutputBoxes(outputsBTrozado)
+export function calcularRindeProduccion(trucks, outputs) {
+  const cajas = totalOutputBoxes(outputs)
   const faenaKg = cajas * KILOS_POR_CAJA_RENDE
   const netoGranja = (trucks || []).reduce(
     (total, truck) =>
-      total + Math.max(0, Number(truck?.brutoOrigen || 0) - Number(truck?.taraOrigen || 0)),
+      total +
+      Math.max(
+        0,
+        Number(truck?.pesos?.origen?.brutoKg || 0) - Number(truck?.pesos?.origen?.taraKg || 0),
+      ),
     0,
   )
   const netoPlanta = (trucks || []).reduce(
     (total, truck) =>
-      total + Math.max(0, Number(truck?.brutoPlanta || 0) - Number(truck?.taraPlanta || 0)),
+      total +
+      Math.max(
+        0,
+        Number(truck?.pesos?.planta?.brutoKg || 0) - Number(truck?.pesos?.planta?.taraKg || 0),
+      ),
     0,
   )
   const bajas = (trucks || []).reduce(
     (totales, truck) => {
-      totales.muertos += Math.max(0, Number(truck?.muertos || 0))
+      totales.muertos += Math.max(0, Number(truck?.faena?.novedades?.muertas || 0))
       totales.decomisos += truckConfiscations(truck)
       return totales
     },

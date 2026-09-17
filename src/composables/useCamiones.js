@@ -27,25 +27,57 @@ export function useCamiones() {
   }
 
   function crearCamion(datos) {
-    return apiRequest('/camiones', { method: 'POST', body: JSON.stringify(datos) })
+    return apiRequest('/camiones', { method: 'POST', body: JSON.stringify(truckPayload(datos)) })
   }
 
   function actualizarCamion(id, datos) {
     return apiRequest(`/camiones/${encodeURIComponent(id)}`, {
       method: 'PATCH',
-      body: JSON.stringify(datos),
+      body: JSON.stringify(truckPayload(datos)),
     })
   }
 
   function guardarFaena(id, datos) {
     return apiRequest(`/camiones/${encodeURIComponent(id)}/faena`, {
       method: 'PATCH',
-      body: JSON.stringify(datos),
+      body: JSON.stringify({
+        faena: { novedades: datos.faena?.novedades },
+        fechas: {
+          egreso: datos.fechas?.egreso,
+          inicioFaena: datos.fechas?.inicioFaena,
+          finFaena: datos.fechas?.finFaena,
+        },
+      }),
     })
   }
 
   function eliminarCamion(id) {
     return apiRequest(`/camiones/${encodeURIComponent(id)}`, { method: 'DELETE' })
+  }
+
+  function truckPayload(datos) {
+    return {
+      comercial: {
+        loteSenasa: datos.comercial?.loteSenasa,
+        documentos: { ...datos.comercial?.documentos },
+        marcaComercial: datos.comercial?.marcaComercialId,
+      },
+      vehiculo: { ...datos.vehiculo },
+      pesos: {
+        origen: { ...datos.pesos?.origen },
+        planta: { ...datos.pesos?.planta },
+        faena: { ...datos.pesos?.faena },
+      },
+      aves: { ...datos.aves },
+      fechas: {
+        ingreso: { ...datos.fechas?.ingreso },
+        egreso: { ...datos.fechas?.egreso },
+      },
+      operacion:
+        Number(datos.operacion?.ordenProduccion || 0) > 0
+          ? { ordenProduccion: Number(datos.operacion.ordenProduccion) }
+          : {},
+    }
   }
 
   async function ordenarCamiones(ids, fecha) {

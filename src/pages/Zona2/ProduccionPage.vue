@@ -10,7 +10,9 @@
             <span class="dialog-icon"><History :size="20" /></span>
             <div class="dialog-heading">
               <h2 class="dialog-title">{{ historyDetail.brand }}</h2>
-              <span class="dialog-subtitle">Producción {{ shortDate(historyDetail.date) }}</span>
+              <span class="dialog-subtitle"
+                >Producción {{ shortDate(historyDetail.context.date) }}</span
+              >
             </div>
           </div>
           <button class="icon-action" type="button" @click="goToHistory">
@@ -34,8 +36,8 @@
             <h3>Camiones y DTE</h3>
             <div class="history-trucks">
               <div v-for="truck in historyTrucks" :key="truck.id">
-                <strong>{{ truck.chasis || '-' }}</strong
-                ><span>DTE {{ truck.dte || '-' }}</span
+                <strong>{{ truck.vehiculo?.chasis || '-' }}</strong
+                ><span>DTE {{ truck.comercial?.documentos?.dte || '-' }}</span
                 ><span>{{ number(consumptionFor(historyDetail, truck.id)) }} aves consumidas</span>
               </div>
             </div>
@@ -62,7 +64,7 @@
           <section>
             <h3>Movimientos</h3>
             <div class="audit-timeline">
-              <div v-for="event in [...(historyDetail.events || [])].reverse()" :key="event.id">
+              <div v-for="event in []" :key="event.id">
                 <span></span>
                 <div>
                   <strong>{{ event.label }}</strong
@@ -134,20 +136,22 @@
             >
               <header>
                 <div>
-                  <strong>{{ line.source.loteSenasa || 'Sin lote' }}</strong
+                  <strong>{{ line.source.comercial?.loteSenasa || 'Sin lote' }}</strong
                   ><small
-                    >DTE {{ line.source.dte || '-' }} ·
-                    {{ line.source.chasis || 'Sin patente' }}</small
+                    >DTE {{ line.source.comercial?.documentos?.dte || '-' }} ·
+                    {{ line.source.vehiculo?.chasis || 'Sin patente' }}</small
                   >
                 </div>
-                <span>{{ line.source.marcaComercial?.nombre || '-' }}</span>
+                <span>{{ line.source.comercial?.marcaComercial?.nombre || '-' }}</span>
               </header>
               <div class="mass-balance-source">
                 <div>
-                  <span>Aves ingresadas</span><strong>{{ number(line.source.avesOrigen) }}</strong>
+                  <span>Aves ingresadas</span
+                  ><strong>{{ number(line.source.aves?.planta) }}</strong>
                 </div>
                 <div>
-                  <span>Muertos</span><strong>{{ number(line.source.muertos) }}</strong>
+                  <span>Muertos</span
+                  ><strong>{{ number(line.source.faena?.novedades?.muertas) }}</strong>
                 </div>
                 <div>
                   <span>Decomisos</span><strong>{{ number(confiscationsFor(line.source)) }}</strong>
@@ -232,7 +236,7 @@
           <div v-if="dailyFinishedLots.length" class="mass-balance-finished">
             <div v-for="production in dailyFinishedLots" :key="production.id">
               <strong>{{ production.finished?.lot || 'Sin lote' }}</strong
-              ><span>{{ brandNameFor(production) }} · {{ production.product }}</span
+              ><span>{{ brandNameFor(production) }}</span
               ><span>{{ number(totalBoxes(production.outputs)) }} cajas</span>
             </div>
           </div>
@@ -297,10 +301,10 @@
               type="button"
               @click="openHistoryDetail(production)"
             >
-              <span class="history-date">{{ shortDate(production.date) }}</span>
+              <span class="history-date">{{ shortDate(production.context.date) }}</span>
               <span class="history-main">
                 <strong>{{ brandNameFor(production) }}</strong>
-                <small>{{ production.product }} · {{ totalBoxes(production.outputs) }} cajas</small>
+                <small>{{ totalBoxes(production.outputs) }} cajas</small>
               </span>
               <span>{{ production.finished?.lot || 'Sin lote' }}</span>
               <span :class="['status-pill', statusClass(production)]">
@@ -428,11 +432,9 @@ import {
   todayIsoDate,
 } from '@/utils/date'
 import {
-  DEFAULT_CALIBERS,
   consumedByTruck,
   groupTrucksByBrand,
-  outputRow,
-  outputRows,
+  outputRowsByType,
   productionDateForTruck,
   productionStatusLabel,
   totalOutputBoxes,
@@ -501,15 +503,17 @@ const filteredHistory = computed(() => {
     )
     .filter((production) => {
       if (!term) return true
-      const truckTerms = production.truckIds
-        .map((id) => truckDataFor(production, id)?.dte || '')
+      const truckTerms = production.entries
+        .map((id) => truckDataFor(production, id)?.comercial?.documentos?.dte || '')
         .join(' ')
       return `${brandNameFor(production)} ${production.finished?.lot || ''} ${truckTerms}`
         .toLocaleLowerCase('es')
         .includes(term)
     })
     .sort((left, right) =>
-      `${right.date}${right.updatedAt}`.localeCompare(`${left.date}${left.updatedAt}`),
+      `${right.context.date}${right.updatedAt}`.localeCompare(
+        `${left.context.date}${left.updatedAt}`,
+      ),
     )
 })
 const historyDetail = computed(() =>
@@ -517,14 +521,14 @@ const historyDetail = computed(() =>
 )
 const historyTrucks = computed(
   () =>
-    historyDetail.value?.truckIds
-      .map((id) => truckDataFor(historyDetail.value, id))
+    historyDetail.value?.entries
+      .map(({ truckId }) => truckDataFor(historyDetail.value, truckId))
       .filter(Boolean) || [],
 )
 const historyTotals = computed(() => totalsFor(historyTrucks.value))
 const historyConsumption = computed(() =>
-  (historyDetail.value?.consumption || []).reduce(
-    (total, item) => total + Number(item.birds || 0),
+  (historyDetail.value?.entries || []).reduce(
+    (total, entry) => total + Number(entry.consumedBirds || 0),
     0,
   ),
 )
@@ -532,10 +536,13 @@ const balanceSourceTrucks = computed(() =>
   trucks.value
     .filter(
       (truck) =>
-        dateInRange(productionDateForTruck(truck), dateRange) &&
-        Boolean(truck.lineConfirmedAt),
+        dateInRange(productionDateForTruck(truck), dateRange) && Boolean(truck.faena?.confirmadaEn),
     )
-    .sort((left, right) => Number(left.productionOrder || 0) - Number(right.productionOrder || 0)),
+    .sort(
+      (left, right) =>
+        Number(left.operacion?.ordenProduccion || 0) -
+        Number(right.operacion?.ordenProduccion || 0),
+    ),
 )
 const selectedMassBalance = computed(() =>
   singleDateSelected.value
@@ -573,7 +580,8 @@ const balanceTotals = computed(() =>
 )
 const dailyFinishedLots = computed(() =>
   productions.value.filter(
-    (production) => dateInRange(production.date, dateRange) && production.status === 'completed',
+    (production) =>
+      dateInRange(production.context.date, dateRange) && production.status === 'completed',
   ),
 )
 
@@ -628,10 +636,12 @@ function setTodayRange() {
 function productionViewModel(production) {
   return {
     ...production,
-    outputs: DEFAULT_CALIBERS.map((caliber) => outputRow(production.outputs, caliber)),
-    outputsB: outputRows(production.outputsB),
-    outputsBTrozado: DEFAULT_CALIBERS.map((caliber) => outputRow(production.outputsBTrozado, caliber)),
-    consumption: production.consumption,
+    context: production.context || { date: '', brand: {} },
+    entries: production.entries || [],
+    outputs: production.outputs || [],
+    normalOutputs: outputRowsByType(production.outputs, 'normal'),
+    bOutputs: outputRowsByType(production.outputs, 'b'),
+    bTrozadoOutputs: outputRowsByType(production.outputs, 'b_trozado'),
   }
 }
 
@@ -722,11 +732,14 @@ function calculateBalanceLine(line) {
 
 function productionFor(group) {
   const matches = productions.value.filter(
-    (production) => production.date === group.date && production.brandId === group.brandId,
+    (production) =>
+      production.context.date === group.date && production.context.brand.id === group.brandId,
   )
   const openProduction = matches.find((production) => production.status !== 'completed')
   if (openProduction) return openProduction
-  const assignedIds = new Set(matches.flatMap((production) => production.truckIds))
+  const assignedIds = new Set(
+    matches.flatMap((production) => production.entries.map(({ truckId }) => truckId)),
+  )
   if (group.trucks.some((truck) => !assignedIds.has(truck.id))) return undefined
   return matches.at(-1)
 }
@@ -735,16 +748,17 @@ async function openProduction(group) {
   let production = productionFor(group)
   if (!production) {
     const previousProductions = productions.value.filter(
-        (item) => item.date === group.date && item.brandId === group.brandId,
+      (item) => item.context.date === group.date && item.context.brand.id === group.brandId,
     )
-    const assignedIds = new Set(previousProductions.flatMap((item) => item.truckIds))
+    const assignedIds = new Set(
+      previousProductions.flatMap((item) => item.entries.map(({ truckId }) => truckId)),
+    )
     const productionTrucks = group.trucks.filter((truck) => !assignedIds.has(truck.id))
     try {
       production = productionViewModel(
         await crearProduccion({
           date: group.date,
           brandId: group.brandId,
-          product: 'Pollo entero',
           truckIds: productionTrucks.map((truck) => truck.id),
         }),
       )
@@ -754,15 +768,19 @@ async function openProduction(group) {
       return
     }
   } else if (production.status !== 'completed') {
-    const occupiedTruckIds = new Set(productions.value.flatMap((item) => item.truckIds))
+    const occupiedTruckIds = new Set(
+      productions.value.flatMap((item) => item.entries.map(({ truckId }) => truckId)),
+    )
     const addedTrucks = group.trucks.filter(
-      (truck) => !production.truckIds.includes(truck.id) && !occupiedTruckIds.has(truck.id),
+      (truck) =>
+        !production.entries.some((entry) => entry.truckId === truck.id) &&
+        !occupiedTruckIds.has(truck.id),
     )
     if (addedTrucks.length) {
       try {
         production = productionViewModel(
           await agregarCamiones(production.id, [
-            ...production.truckIds,
+            ...production.entries.map(({ truckId }) => truckId),
             ...addedTrucks.map((truck) => truck.id),
           ]),
         )
@@ -785,7 +803,7 @@ async function openProduction(group) {
 }
 
 function nextStepFor(production) {
-  if (production.status === 'completed' || production.consumptionConfirmedAt) return 'cierre'
+  if (production.status === 'completed' || production.productionConfirmedAt) return 'cierre'
   if (production.productionConfirmedAt) return 'cierre'
   if (production.entryConfirmedAt) return 'carga'
   return 'ingreso'
@@ -813,7 +831,7 @@ function truckDataFor(production, truckId) {
   return trucks.value.find((truck) => truck.id === truckId)
 }
 function consumptionFor(production, truckId) {
-  return production?.consumption?.find((item) => item.truckId === truckId)?.birds || 0
+  return production?.entries?.find((entry) => entry.truckId === truckId)?.consumedBirds || 0
 }
 
 function blackTruckCount(group) {
@@ -832,7 +850,7 @@ function totalsFor(list) {
   return list.reduce(
     (totals, truck) => {
       totals.birds += birdsFor(truck)
-      totals.deaths += Math.max(0, Number(truck.muertos || 0))
+      totals.deaths += Math.max(0, Number(truck.faena?.novedades?.muertas || 0))
       totals.confiscations += confiscationsFor(truck)
       totals.available += truckAvailableBirds(truck)
       return totals
@@ -881,8 +899,7 @@ function processStatusClass(group) {
       : 'status-active'
 }
 function brandNameFor(production) {
-  const truck = production.truckIds.map((id) => truckDataFor(production, id)).find(Boolean)
-  return truck?.marcaComercial?.nombre || '-'
+  return production?.context?.brand?.nombre || '-'
 }
 function number(value) {
   return nonNegative(value).toLocaleString('es-AR')

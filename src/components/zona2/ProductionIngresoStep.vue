@@ -21,13 +21,13 @@
               'raw-material-table-row',
               { 'raw-material-table-row--active': isTruckActionOpen(truck) },
             ]"
-            @click="toggleTruckActions(truck)"
+            @click="!readonly && toggleTruckActions(truck)"
           >
             <span data-label="Orden">{{ truckUseOrder(truck.id) }}</span>
             <div class="truck-cell">
               <span class="truck-avatar"><Truck :size="17" /></span>
-              <strong>{{ truck.chasis || 'Sin patente' }}</strong>
-              <small>DTE {{ truck.dte || '-' }}</small>
+              <strong>{{ truck.vehiculo?.chasis || 'Sin patente' }}</strong>
+              <small>DTE {{ truck.comercial?.documentos?.dte || '-' }}</small>
             </div>
             <span data-label="Vía" :class="['status-pill', truckClassificationClass(truck)]">
               {{ truckClassificationLabel(truck) }}
@@ -35,19 +35,19 @@
             <span data-label="Estado" :class="['status-pill', truckStatusClass(truck)]">
               {{ truckStatusLabel(truck) }}
             </span>
-            <span data-label="Lote">{{ truck.loteSenasa || '-' }}</span>
-            <span data-label="Aves origen">{{ number(truck.avesGranja) }}</span>
+            <span data-label="Lote">{{ truck.comercial?.loteSenasa || '-' }}</span>
+            <span data-label="Aves origen">{{ number(truck.aves?.origen) }}</span>
             <span data-label="Aves planta">{{ number(birdsFor(truck)) }}</span>
             <span data-label="Neto granja">{{ kg(metricsFor(truck).netoGranja) }}</span>
             <span data-label="Neto planta">{{ kg(metricsFor(truck).netoPlanta) }}</span>
             <span data-label="Merma">{{ kg(metricsFor(truck).diferenciaNetaGranjaPlanta) }}</span>
-            <span data-label="Muertos">{{ number(truck.muertos) }}</span>
+            <span data-label="Muertos">{{ number(truck.faena?.novedades?.muertas) }}</span>
             <span data-label="Decomisos">{{ number(confiscationsFor(truck)) }}</span>
             <strong data-label="Disponibles" class="available">{{
               number(availableForTruck(truck))
             }}</strong>
           </div>
-          <div v-if="isTruckActionOpen(truck)" class="raw-material-action-row">
+          <div v-if="!readonly && isTruckActionOpen(truck)" class="raw-material-action-row">
             <div class="truck-inline-actions">
               <span>¿Qué querés hacer con este camión?</span>
               <button type="button" @click.stop="editTruck(truck, 1)">
@@ -92,7 +92,7 @@
         </div>
       </dl>
     </div>
-    <div class="production-stage-actions">
+    <div v-if="!readonly" class="production-stage-actions">
       <button class="primary-action" type="button" @click="$emit('confirm')">
         Continuar <ArrowRight :size="17" />
       </button>
@@ -116,6 +116,7 @@ const expandedTruckId = ref('')
 const props = defineProps({
   activeTrucks: { type: Array, required: true },
   activeTotals: { type: Object, required: true },
+  readonly: { type: Boolean, default: false },
   number: { type: Function, required: true },
   birdsFor: { type: Function, required: true },
   confiscationsFor: { type: Function, required: true },
@@ -127,12 +128,12 @@ const tableTotals = computed(() =>
   props.activeTrucks.reduce(
     (totals, truck) => {
       const metrics = metricsFor(truck)
-      totals.originBirds += Number(truck.avesGranja || 0)
+      totals.originBirds += Number(truck.aves?.origen || 0)
       totals.plantBirds += Number(props.birdsFor(truck) || 0)
       totals.farmNetKg += metrics.netoGranja
       totals.plantNetKg += metrics.netoPlanta
       totals.lossKg += metrics.diferenciaNetaGranjaPlanta
-      totals.deaths += Number(truck.muertos || 0)
+      totals.deaths += Number(truck.faena?.novedades?.muertas || 0)
       totals.confiscations += Number(props.confiscationsFor(truck) || 0)
       totals.available += Number(props.availableForTruck(truck) || 0)
       return totals

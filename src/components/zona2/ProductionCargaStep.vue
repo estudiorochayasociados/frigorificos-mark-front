@@ -14,13 +14,18 @@
           <div class="output-table-head">
             <span>Cajones</span><span>Producción</span><span>Aves</span>
           </div>
-          <div v-for="output in production.outputs" :key="output.caliber" class="output-table-row">
+          <div
+            v-for="output in production.normalOutputs"
+            :key="output.caliber"
+            class="output-table-row"
+          >
             <div class="output-quantity-cell">
               <NonNegativeInput
                 :model-value="output.boxes"
                 class="output-quantity-input"
                 outlined
                 dense
+                :readonly="production.status === 'completed'"
                 :aria-label="`Cajas normales, calibre ${output.caliber}`"
                 @update:model-value="$emit('updateOutputBoxes', output.caliber, $event)"
               />
@@ -34,6 +39,7 @@
                 class="output-birds-input"
                 outlined
                 dense
+                :readonly="production.status === 'completed'"
                 :aria-label="`Aves, calibre ${output.caliber}`"
                 @update:model-value="$emit('updateOutputBirds', 'normal', output.caliber, $event)"
               />
@@ -46,7 +52,7 @@
                   }}
                 </span>
                 <button
-                  v-if="hasManualOutputBirds(output)"
+                  v-if="hasManualOutputBirds(output) && production.status !== 'completed'"
                   class="output-recalculate-button"
                   type="button"
                   title="Volver al cálculo por calibre y cajones"
@@ -58,8 +64,9 @@
             </div>
           </div>
           <div class="output-table-row output-table-row--total">
-            <span>Total</span><strong>{{ number(totalBoxes(production.outputs)) }} cajones</strong
-            ><strong>{{ number(totalOutputBirds(production.outputs)) }} aves</strong>
+            <span>Total</span
+            ><strong>{{ number(totalBoxes(production.normalOutputs)) }} cajones</strong
+            ><strong>{{ number(totalOutputBirds(production.normalOutputs)) }} aves</strong>
           </div>
         </div>
       </section>
@@ -106,7 +113,7 @@
                   }}
                 </span>
                 <button
-                  v-if="hasManualOutputBirds(output)"
+                  v-if="hasManualOutputBirds(output) && production.status !== 'completed'"
                   class="output-recalculate-button"
                   type="button"
                   title="Volver al cálculo por calibre y cajones"
@@ -169,7 +176,7 @@
                   }}
                 </span>
                 <button
-                  v-if="hasManualOutputBirds(output)"
+                  v-if="hasManualOutputBirds(output) && production.status !== 'completed'"
                   class="output-recalculate-button"
                   type="button"
                   title="Volver al cálculo por calibre y cajones"
@@ -224,7 +231,7 @@
       </section>
     </div>
 
-    <div class="production-stage-actions">
+    <div v-if="production.status !== 'completed'" class="production-stage-actions">
       <button class="primary-action" type="button" @click="$emit('confirmOutput')">
         Confirmar producción <ArrowRight :size="17" />
       </button>
@@ -261,26 +268,26 @@ const props = defineProps({
 })
 
 const bOutputs = computed(() =>
-  props.production.outputsB?.length
-    ? props.production.outputsB
+  props.production.bOutputs?.length
+    ? props.production.bOutputs
     : DEFAULT_CALIBERS.map((caliber) => ({ caliber, boxes: 0 })),
 )
 
 const bTrozadoOutputs = computed(() =>
-  props.production.outputsBTrozado?.length
-    ? props.production.outputsBTrozado
+  props.production.bTrozadoOutputs?.length
+    ? props.production.bTrozadoOutputs
     : DEFAULT_CALIBERS.map((caliber) => ({ caliber, boxes: 0 })),
 )
 
 const totalOutputBoxes = computed(
   () =>
-    props.totalBoxes(props.production.outputs) +
+    props.totalBoxes(props.production.normalOutputs) +
     props.totalBoxes(bOutputs.value) +
     props.totalBoxes(bTrozadoOutputs.value),
 )
 const totalBirds = computed(
   () =>
-    totalOutputBirds(props.production.outputs) +
+    totalOutputBirds(props.production.normalOutputs) +
     totalOutputBirds(bOutputs.value) +
     totalOutputBirds(bTrozadoOutputs.value),
 )
