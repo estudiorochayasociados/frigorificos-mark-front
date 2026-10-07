@@ -1,6 +1,7 @@
 const authTokenKey = 'mark-auth-token'
 const accountKey = 'mark-auth-account'
-const apiBaseUrl = (import.meta.env.VITE_API_URL || 'http://26.103.1.82:3000/api').replace(/\/$/, '')
+// const apiBaseUrl = (import.meta.env.VITE_API_URL || 'http://192.168.10.159:3000/api').replace(/\/$/, '')
+const apiBaseUrl = (import.meta.env.VITE_API_URL || 'https://mark.cloud.estudiorocha.ar/api').replace(/\/$/, '')
 
 export async function apiRequest(path, options = {}) {
   const headers = new Headers(options.headers || {})

@@ -501,6 +501,7 @@ import {
   truckAvailableBirds,
   truckBirds,
   truckConfiscations,
+  truckReadyForProduction,
 } from '@/utils/production'
 
 const route = useRoute()
@@ -627,6 +628,7 @@ const balanceSourceTrucks = computed(() =>
       (truck) =>
         dateInRange(productionDateForTruck(truck), dateRange) &&
         Boolean(truck.faena?.confirmadaEn) &&
+        truckReadyForProduction(truck) &&
         truckClassificationKey(truck) === 'blanco',
     )
     .sort(

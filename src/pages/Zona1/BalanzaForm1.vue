@@ -345,7 +345,6 @@ const clientName = computed(() => {
 const formValidationMessage = computed(() => {
   if (!form.comercial.marcaComercialId) return 'Seleccioná una marca comercial.'
   if (!form.vehiculo.chasis?.trim()) return 'Ingresá la patente de chasis.'
-  if (Number(form.aves.planta || 0) <= 0) return 'Ingresá una cantidad de aves mayor a cero.'
   if (
     calculateNet(form.pesos.origen.brutoKg, form.pesos.origen.taraKg) <= 0 &&
     calculateNet(form.pesos.faena.brutoKg, form.pesos.planta.taraKg) <= 0 &&

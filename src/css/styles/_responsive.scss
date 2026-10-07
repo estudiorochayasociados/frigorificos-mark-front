@@ -292,6 +292,10 @@
     grid-template-columns: 1fr;
   }
 
+  .closure-results {
+    width: 100%;
+  }
+
   .production-totals {
     grid-template-columns: 1fr 1fr;
   }
@@ -328,6 +332,7 @@
   .consumption-summary,
   .consumption-planner,
   .output-tables-grid,
+.closure-output-tables,
   .production-filters,
   .date-range-filters,
   .mass-balance-inputs,

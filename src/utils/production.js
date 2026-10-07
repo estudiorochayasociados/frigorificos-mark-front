@@ -45,6 +45,14 @@ export function truckBirds(truck) {
   return Math.max(0, Number(truck?.aves?.planta || 0))
 }
 
+export function truckReadyForProduction(truck) {
+  return (
+    Number(truck?.pesos?.faena?.brutoKg || 0) > 0 &&
+    Number(truck?.pesos?.planta?.taraKg || 0) > 0 &&
+    truckBirds(truck) > 0
+  )
+}
+
 export function truckConfiscations(truck) {
   return Math.max(0, Number(truck?.faena?.novedades?.decomisadas || 0))
 }
@@ -70,7 +78,7 @@ export function groupTrucksByBrand(trucks, date) {
       (truck) =>
         truck?.comercial?.marcaComercial?.id &&
         dateMatchesFilter(productionDateForTruck(truck), date) &&
-        (!date || Boolean(truck.faena?.confirmadaEn)),
+        (!date || (Boolean(truck.faena?.confirmadaEn) && truckReadyForProduction(truck))),
     )
     .forEach((truck) => {
       const truckDate = productionDateForTruck(truck)

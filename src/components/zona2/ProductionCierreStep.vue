@@ -7,13 +7,91 @@
         <p>Verifica el resumen e identifica el lote terminado.</p>
       </div>
     </header>
+
     <div class="closure-grid">
-      <div class="closure-summary">
+      <div class="closure-results">
+        <div class="closure-output-tables">
+          <div class="output-table closure-output-table">
+            <div class="output-table-head">
+              <span>Cajones</span><span>Producción</span><span>Aves</span>
+            </div>
+      <section class="output-table-group">
+        <div class="closure-output-section-title">Cajas normales</div>
+          <div v-for="output in producedOutputs" :key="output.caliber" class="output-table-row">
+            <strong class="closure-output-quantity">{{ number(output.boxes) }}</strong>
+            <div class="output-calculation">
+              {{ number(output.boxes) }} cajones de calibre {{ output.caliber }}
+            </div>
+            <strong class="closure-output-birds">{{ number(outputBirds(output)) }} aves</strong>
+          </div>
+          <div class="output-table-row output-table-row--total">
+            <span>Total</span><strong>{{ number(totalBoxes(production.normalOutputs)) }} cajones</strong
+            ><strong>{{ number(totalOutputBirds(production.normalOutputs)) }} aves</strong>
+          </div>
+      </section>
+
+      <section class="output-table-group">
+        <div class="closure-output-section-title">Cajas B</div>
+          <div v-for="output in producedOutputsB" :key="output.caliber" class="output-table-row">
+            <strong class="closure-output-quantity">{{ number(output.boxes) }}</strong>
+            <div class="output-calculation">
+              {{ number(output.boxes) }} cajones de calibre B {{ output.caliber }}
+            </div>
+            <strong class="closure-output-birds">{{ number(outputBirds(output)) }} aves</strong>
+          </div>
+          <div class="output-table-row output-table-row--total">
+            <span>Total</span><strong>{{ number(totalBoxes(production.bOutputs)) }} cajones</strong
+            ><strong>{{ number(totalOutputBirds(production.bOutputs)) }} aves</strong>
+          </div>
+      </section>
+
+      <section class="output-table-group">
+        <div class="closure-output-section-title">Cajas B · Pollo trozado</div>
+          <div v-for="output in producedOutputsBTrozado" :key="output.caliber" class="output-table-row">
+            <strong class="closure-output-quantity">{{ number(output.boxes) }}</strong>
+            <div class="output-calculation">
+              {{ number(output.boxes) }} cajones de calibre B {{ output.caliber }}
+            </div>
+            <strong class="closure-output-birds">{{ number(outputBirds(output)) }} aves</strong>
+          </div>
+          <div class="output-table-row output-table-row--total">
+            <span>Total</span><strong>{{ number(totalBoxes(production.bTrozadoOutputs)) }} cajones</strong
+            ><strong>{{ number(totalOutputBirds(production.bTrozadoOutputs)) }} aves</strong>
+          </div>
+      </section>
+            <div class="output-table-row output-table-row--grand-total">
+              <span>Total producción</span>
+              <strong>
+                {{
+                  number(
+                    totalBoxes([
+                      ...production.normalOutputs,
+                      ...production.bOutputs,
+                      ...production.bTrozadoOutputs,
+                    ]),
+                  )
+                }}
+                cajones
+              </strong>
+              <strong>
+                {{
+                  number(
+                    totalOutputBirds([
+                      ...production.normalOutputs,
+                      ...production.bOutputs,
+                      ...production.bTrozadoOutputs,
+                    ]),
+                  )
+                }}
+                aves
+              </strong>
+            </div>
+          </div>
+        </div>
+
+        <div class="closure-summary">
         <section class="closure-summary-section">
           <h3>Entrada</h3>
-          <div class="closure-summary-row">
-            <span>Aves ingresadas</span><strong>{{ number(activeTotals.birds) }}</strong>
-          </div>
           <div class="closure-summary-row">
             <span>Muertos</span><strong>{{ number(activeTotals.deaths) }}</strong>
           </div>
@@ -22,19 +100,9 @@
           </div>
         </section>
         <section class="closure-summary-section">
-          <h3>Consumo automático</h3>
-          <div class="closure-summary-row">
-            <span>Aves utilizadas</span><strong>{{ number(selectedConsumption) }}</strong>
-          </div>
-          <div class="closure-summary-row">
-            <span>Aves restantes</span
-            ><strong>{{ number(activeTotals.available - selectedConsumption) }}</strong>
-          </div>
-        </section>
-        <section class="closure-summary-section">
           <h3>Rinde</h3>
           <div class="closure-summary-row">
-            <span>Faena</span><strong>{{ number(yieldSummary.faenaKg) }} kg</strong>
+            <span>Kg totales</span><strong>{{ number(yieldSummary.faenaKg) }} kg</strong>
           </div>
           <div class="closure-summary-row">
             <span>Neto granja</span><strong>{{ number(yieldSummary.netoGranja) }} kg</strong>
@@ -49,42 +117,7 @@
             <span>Rinde planta</span><strong>{{ percentage(yieldSummary.rindePlanta) }}</strong>
           </div>
         </section>
-        <section class="closure-summary-section">
-          <h3>Cajas</h3>
-          <div v-for="output in producedOutputs" :key="output.caliber" class="closure-summary-row">
-            <span>Calibre {{ output.caliber }}</span
-            ><strong>{{ number(output.boxes) }} cajas</strong>
-          </div>
-          <div class="closure-summary-row closure-summary-row--total">
-            <span>Total cajas</span
-            ><strong>{{ number(totalBoxes(production.normalOutputs)) }}</strong>
-          </div>
-        </section>
-        <section class="closure-summary-section">
-          <h3>Cajas B</h3>
-          <div v-for="output in producedOutputsB" :key="output.caliber" class="closure-summary-row">
-            <span>Calibre B {{ output.caliber }}</span
-            ><strong>{{ number(output.boxes) }} cajas</strong>
-          </div>
-          <div class="closure-summary-row closure-summary-row--total">
-            <span>Total cajas B</span><strong>{{ number(totalBoxes(production.bOutputs)) }}</strong>
-          </div>
-        </section>
-        <section class="closure-summary-section">
-          <h3>Cajas B · Pollo trozado</h3>
-          <div
-            v-for="output in producedOutputsBTrozado"
-            :key="output.caliber"
-            class="closure-summary-row"
-          >
-            <span>Calibre B {{ output.caliber }}</span
-            ><strong>{{ number(output.boxes) }} cajas</strong>
-          </div>
-          <div class="closure-summary-row closure-summary-row--total">
-            <span>Total cajas B · Pollo trozado</span
-            ><strong>{{ number(totalBoxes(production.bTrozadoOutputs)) }}</strong>
-          </div>
-        </section>
+        </div>
       </div>
       <div class="finished-data">
         <h3>Identificación del lote</h3>
@@ -141,6 +174,7 @@
 <script setup>
 import DateInput from '@/components/DateInput.vue'
 import { PackageCheck } from '@lucide/vue'
+import { outputBirds, totalOutputBirds } from '@/utils/production'
 
 defineEmits(['closeProduction', 'updateFinished'])
 defineProps({
